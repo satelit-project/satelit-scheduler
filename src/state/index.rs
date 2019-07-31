@@ -1,9 +1,11 @@
-use serde::{Serialize, Deserialize};
 use futures::prelude::*;
+use serde::{Serialize, Deserialize};
+use reqwest::r#async::Client as HttpClient;
 
 use std::error::Error;
 
 use crate::block::{blocking, BlockingError};
+use crate::settings;
 
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
@@ -63,4 +65,18 @@ where
 pub enum IndexError {
     NetworkError(Box<dyn Error>),
     StorageError(Box<dyn Error>),
+}
+
+impl IndexClient for HttpClient {
+    type Error = reqwest::Error;
+    type Future = Box<dyn Future<Item = IndexFile, Error = Self::Error> + Send>;
+
+    fn latest_index(&self) -> Self::Future {
+        let url = settings::shared().anidb().dump_url();
+        let fut = self.get(url).send()
+            .and_then(|r| r.error_for_status().into_future())
+            .and_then(|mut r| r.json::<IndexFile>());
+
+        Box::new(fut)
+    }
 }

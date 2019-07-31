@@ -30,6 +30,10 @@ impl Settings {
         s.merge(File::with_name("config/default"))?;
         s.try_into()
     }
+
+    pub fn anidb(&self) -> &Anidb {
+        &self.anidb
+    }
 }
 
 /// Settings for interaction with AniDB data dumps
