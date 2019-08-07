@@ -5,7 +5,7 @@ authors = ["Igor Nikitin <rabbitinspace@icloud.com>"]
 edition = "2018"
 
 [dependencies]
-log = "0.4.7"
+log = "0.4.8"
 config = "0.9.3"
 
 serde = { version = "1.0.97", features = ["derive"] }
