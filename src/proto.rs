@@ -1,7 +1,7 @@
 #![allow(clippy::all)]
 
 pub mod data;
-pub mod scheduler;
-pub mod scraper;
+pub mod import;
+pub mod scraping;
 
 mod google;

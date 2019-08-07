@@ -1,82 +1,52 @@
 use futures::prelude::*;
-use serde::{Serialize, Deserialize};
-use reqwest::r#async::Client as HttpClient;
+use reqwest::r#async::Client;
+use serde::{Deserialize, Serialize};
 
 use std::error::Error;
 
-use crate::block::{blocking, BlockingError};
 use crate::settings;
+use crate::block::blocking;
+use crate::db::index::IndexFiles;
+use crate::db::entity::IndexFile;
 
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-pub struct IndexFile {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewIndexFile {
     url: String,
     hash: String,
 }
 
-pub trait IndexClient {
-    type Error: std::error::Error + Send;
-    type Future: Future<Item = IndexFile, Error = Self::Error> + Send;
-
-    fn latest_index(&self) -> Self::Future;
-}
-
-pub trait IndexStore: Clone + Send {
-    type Error: std::error::Error + Send;
-
-    fn is_outdated(&self, index: &IndexFile) -> Result<bool, Self::Error>;
-    fn set_latest(&mut self, index: &IndexFile) -> Result<(), Self::Error>;
-}
-
-pub struct CheckIndex<C, S> {
-    client: C,
-    store: S,
-}
-
-impl<C, S> CheckIndex<C, S>
-where
-    C: IndexClient + 'static,
-    S: IndexStore + 'static,
-{
-    pub fn new(client: C, store: S) -> Self {
-        CheckIndex {
-            client,
-            store,
-        }
-    }
-
-    pub fn updated_index(&self) -> impl Future<Item = Option<IndexFile>, Error = IndexError> {
-        let store = self.store.clone();
-        self.client.latest_index()
-            .map_err(|e| IndexError::NetworkError(Box::new(e)))
-            .and_then(move |index| {
-                let index_cloned = index.clone();
-                let outdated = blocking( move || store.is_outdated(&index))
-                    .map_err(|e: BlockingError<S::Error>| IndexError::StorageError(Box::new(e)));
-
-                outdated.join(Ok(index_cloned))
-            })
-            .and_then(|(outdated, index)| {
-                if outdated { Ok(None) } else { Ok(Some(index)) }
-            })
-    }
-}
-
-pub enum IndexError {
+pub enum CheckError {
     NetworkError(Box<dyn Error>),
     StorageError(Box<dyn Error>),
 }
 
-impl IndexClient for HttpClient {
-    type Error = reqwest::Error;
-    type Future = Box<dyn Future<Item = IndexFile, Error = Self::Error> + Send>;
+pub struct CheckIndex {
+    client: Client,
+    store: IndexFiles,
+}
 
-    fn latest_index(&self) -> Self::Future {
+impl CheckIndex {
+    pub fn new(client: Client, store: IndexFiles) -> Self {
+        CheckIndex { client, store }
+    }
+
+    pub fn updated_index(&self) -> impl Future<Item = IndexFile, Error = CheckError> {
+        let store = self.store.clone();
+        self.latest_index()
+            .map_err(|e| CheckError::NetworkError(Box::new(e)))
+            .and_then(move |new_index| {
+                blocking(move || {
+                    store.queue(&new_index.hash)
+                }).map_err(|e| CheckError::StorageError(Box::new(e)))
+            })
+    }
+
+    fn latest_index(&self) -> impl Future<Item = NewIndexFile, Error = reqwest::Error> {
         let url = settings::shared().anidb().dump_url();
-        let fut = self.get(url).send()
-            .and_then(|r| r.error_for_status().into_future())
-            .and_then(|mut r| r.json::<IndexFile>());
-
-        Box::new(fut)
+        self.client
+            .get(url)
+            .send()
+            .and_then(|r| r.error_for_status())
+            .and_then(|mut r| r.json::<NewIndexFile>())
     }
 }

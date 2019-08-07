@@ -1,7 +1,8 @@
-use serde::Deserialize;
 use config::{Config, ConfigError, File};
+use serde::Deserialize;
 
 use std::sync::Once;
+use std::time::Duration;
 
 /// Returns reference to global settings instance
 pub fn shared() -> &'static Settings {
@@ -22,6 +23,7 @@ pub fn shared() -> &'static Settings {
 #[derive(Debug, Deserialize)]
 pub struct Settings {
     anidb: Anidb,
+    db: Db,
 }
 
 impl Settings {
@@ -33,6 +35,10 @@ impl Settings {
 
     pub fn anidb(&self) -> &Anidb {
         &self.anidb
+    }
+
+    pub fn db(&self) -> &Db {
+        &self.db
     }
 }
 
@@ -64,6 +70,31 @@ impl Anidb {
     /// Returns path to a file which tracks failed to import anime ids
     pub fn reimport_path(&self) -> &str {
         &self.reimport_path
+    }
+}
+
+/// Database configuration
+#[derive(Debug, Deserialize)]
+pub struct Db {
+    url: String,
+    max_connections: u32,
+    connection_timeout: u64,
+}
+
+impl Db {
+    /// Returns database connection URL
+    pub fn url(&self) -> &str {
+        &self.url
+    }
+
+    /// Return number of maximum database connections
+    pub fn max_connections(&self) -> u32 {
+        self.max_connections
+    }
+
+    /// Returns database connection timeout
+    pub fn connection_timeout(&self) -> Duration {
+        Duration::new(self.connection_timeout, 0)
     }
 }
 

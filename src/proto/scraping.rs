@@ -8,6 +8,19 @@ pub struct ScrapeIntent {
     #[prost(enumeration="super::data::Source", tag="2")]
     pub source: i32,
 }
+/// Result of scraping process
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScrapeIntentResult {
+    /// Intent ID
+    #[prost(string, tag="1")]
+    pub id: std::string::String,
+    /// Wherever scraping was successful
+    #[prost(bool, tag="2")]
+    pub succeeded: bool,
+    /// Error description if scraping was unsuccessful
+    #[prost(string, tag="3")]
+    pub error_description: std::string::String,
+}
 /// Represents a task for anime pages scraping
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Task {
@@ -56,7 +69,7 @@ pub struct TaskFinish {
 }
 pub mod client {
     use ::tower_grpc::codegen::client::*;
-    use super::{ScrapeIntent, TaskCreate, Task, TaskYield, TaskFinish};
+    use super::{ScrapeIntent, ScrapeIntentResult, TaskCreate, Task, TaskYield, TaskFinish};
 
     /// A service to start scraping process
     /// 
@@ -91,11 +104,11 @@ pub mod client {
         /// 
         /// 'Scraper' should implement a server side of the service and
         /// something from the outside needs to trigger scraping process.
-        pub fn start_scraping<R>(&mut self, request: grpc::Request<ScrapeIntent>) -> grpc::unary::ResponseFuture<(), T::Future, T::ResponseBody>
+        pub fn start_scraping<R>(&mut self, request: grpc::Request<ScrapeIntent>) -> grpc::unary::ResponseFuture<ScrapeIntentResult, T::Future, T::ResponseBody>
         where T: grpc::GrpcService<R>,
               grpc::unary::Once<ScrapeIntent>: grpc::Encodable<R>,
         {
-            let path = http::PathAndQuery::from_static("/scraper.ScraperService/StartScraping");
+            let path = http::PathAndQuery::from_static("/scraping.ScraperService/StartScraping");
             self.inner.unary(request, path)
         }
     }
@@ -137,7 +150,7 @@ pub mod client {
         where T: grpc::GrpcService<R>,
               grpc::unary::Once<TaskCreate>: grpc::Encodable<R>,
         {
-            let path = http::PathAndQuery::from_static("/scraper.ScraperTasksService/CreateTask");
+            let path = http::PathAndQuery::from_static("/scraping.ScraperTasksService/CreateTask");
             self.inner.unary(request, path)
         }
 
@@ -149,7 +162,7 @@ pub mod client {
         where T: grpc::GrpcService<R>,
               grpc::unary::Once<TaskYield>: grpc::Encodable<R>,
         {
-            let path = http::PathAndQuery::from_static("/scraper.ScraperTasksService/YieldResult");
+            let path = http::PathAndQuery::from_static("/scraping.ScraperTasksService/YieldResult");
             self.inner.unary(request, path)
         }
 
@@ -161,7 +174,7 @@ pub mod client {
         where T: grpc::GrpcService<R>,
               grpc::unary::Once<TaskFinish>: grpc::Encodable<R>,
         {
-            let path = http::PathAndQuery::from_static("/scraper.ScraperTasksService/CompleteTask");
+            let path = http::PathAndQuery::from_static("/scraping.ScraperTasksService/CompleteTask");
             self.inner.unary(request, path)
         }
     }
@@ -169,7 +182,7 @@ pub mod client {
 
 pub mod server {
     use ::tower_grpc::codegen::server::*;
-    use super::{ScrapeIntent, TaskCreate, Task, TaskYield, TaskFinish};
+    use super::{ScrapeIntent, ScrapeIntentResult, TaskCreate, Task, TaskYield, TaskFinish};
 
     // Redefine the try_ready macro so that it doesn't need to be explicitly
     // imported by the user of this generated code.
@@ -186,9 +199,9 @@ pub mod server {
     /// 'Scraper' should implement a server side of the service and
     /// something from the outside needs to trigger scraping process.
     pub trait ScraperService: Clone {
-        type StartScrapingFuture: futures::Future<Item = grpc::Response<()>, Error = grpc::Status>;
+        type StartScrapingFuture: futures::Future<Item = grpc::Response<ScrapeIntentResult>, Error = grpc::Status>;
 
-        /// Starts scraping process
+        /// Starts web scraping and returns result of the operation when finished
         fn start_scraping(&mut self, request: grpc::Request<ScrapeIntent>) -> Self::StartScrapingFuture;
     }
 
@@ -220,7 +233,7 @@ pub mod server {
             use self::scraper_service::Kind::*;
 
             match request.uri().path() {
-                "/scraper.ScraperService/StartScraping" => {
+                "/scraping.ScraperService/StartScraping" => {
                     let service = scraper_service::methods::StartScraping(self.scraper_service.clone());
                     let response = grpc::unary(service, request);
                     scraper_service::ResponseFuture { kind: StartScraping(response) }
@@ -363,14 +376,14 @@ pub mod server {
 
         pub mod methods {
             use ::tower_grpc::codegen::server::*;
-            use super::super::{ScraperService, ScrapeIntent};
+            use super::super::{ScraperService, ScrapeIntent, ScrapeIntentResult};
 
             pub struct StartScraping<T>(pub T);
 
             impl<T> tower::Service<grpc::Request<ScrapeIntent>> for StartScraping<T>
             where T: ScraperService,
             {
-                type Response = grpc::Response<()>;
+                type Response = grpc::Response<ScrapeIntentResult>;
                 type Error = grpc::Status;
                 type Future = T::StartScrapingFuture;
 
@@ -442,17 +455,17 @@ pub mod server {
             use self::scraper_tasks_service::Kind::*;
 
             match request.uri().path() {
-                "/scraper.ScraperTasksService/CreateTask" => {
+                "/scraping.ScraperTasksService/CreateTask" => {
                     let service = scraper_tasks_service::methods::CreateTask(self.scraper_tasks_service.clone());
                     let response = grpc::unary(service, request);
                     scraper_tasks_service::ResponseFuture { kind: CreateTask(response) }
                 }
-                "/scraper.ScraperTasksService/YieldResult" => {
+                "/scraping.ScraperTasksService/YieldResult" => {
                     let service = scraper_tasks_service::methods::YieldResult(self.scraper_tasks_service.clone());
                     let response = grpc::unary(service, request);
                     scraper_tasks_service::ResponseFuture { kind: YieldResult(response) }
                 }
-                "/scraper.ScraperTasksService/CompleteTask" => {
+                "/scraping.ScraperTasksService/CompleteTask" => {
                     let service = scraper_tasks_service::methods::CompleteTask(self.scraper_tasks_service.clone());
                     let response = grpc::unary(service, request);
                     scraper_tasks_service::ResponseFuture { kind: CompleteTask(response) }

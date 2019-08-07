@@ -4,6 +4,11 @@ download_path = "static/anidb_dump_next.gz"
 serve_path = "static/anidb_dump.gz"
 reimport_path = "static/reimports.json"
 
+[db]
+url = "postgres://test:qwerty@localhost/scheduler"
+max_connections = 16
+connection_timeout = 10
+
 [service.import]
 host = "127.0.0.1"
 port = 10601

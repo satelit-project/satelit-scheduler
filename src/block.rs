@@ -10,10 +10,10 @@ pub enum BlockingError<E: std::error::Error> {
 }
 
 pub fn blocking<F, I, E>(mut f: F) -> impl Future<Item = I, Error = BlockingError<E>>
-    where
-        F: FnMut() -> Result<I, E> + Send + 'static,
-        I: Send + 'static,
-        E: std::error::Error + Send + 'static,
+where
+    F: FnMut() -> Result<I, E> + Send + 'static,
+    I: Send + 'static,
+    E: std::error::Error + Send + 'static,
 {
     let (tx, rx) = oneshot::channel();
     tokio::spawn(futures::lazy(move || {
