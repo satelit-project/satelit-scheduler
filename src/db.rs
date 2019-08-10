@@ -1,5 +1,6 @@
 pub mod entity;
 pub mod index;
+pub mod import;
 pub mod schema;
 
 pub use diesel::r2d2::PoolError;

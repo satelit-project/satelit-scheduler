@@ -9,30 +9,30 @@ use crate::block::blocking;
 use crate::db::index::IndexFiles;
 use crate::db::entity::IndexFile;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NewIndexFile {
-    url: String,
-    hash: String,
-}
-
 pub enum CheckError {
     NetworkError(Box<dyn Error>),
     StorageError(Box<dyn Error>),
 }
 
-pub struct CheckIndex {
+pub struct IndexChecker {
     client: Client,
     store: IndexFiles,
 }
 
-impl CheckIndex {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct NewIndexFile {
+    url: String,
+    hash: String,
+}
+
+impl IndexChecker {
     pub fn new(client: Client, store: IndexFiles) -> Self {
-        CheckIndex { client, store }
+        IndexChecker { client, store }
     }
 
-    pub fn updated_index(&self) -> impl Future<Item = IndexFile, Error = CheckError> {
+    pub fn latest_index(&self) -> impl Future<Item = IndexFile, Error = CheckError> {
         let store = self.store.clone();
-        self.latest_index()
+        self.request_index()
             .map_err(|e| CheckError::NetworkError(Box::new(e)))
             .and_then(move |new_index| {
                 blocking(move || {
@@ -41,7 +41,7 @@ impl CheckIndex {
             })
     }
 
-    fn latest_index(&self) -> impl Future<Item = NewIndexFile, Error = reqwest::Error> {
+    fn request_index(&self) -> impl Future<Item = NewIndexFile, Error = reqwest::Error> {
         let url = settings::shared().anidb().dump_url();
         self.client
             .get(url)
