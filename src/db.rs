@@ -1,6 +1,6 @@
 pub mod entity;
-pub mod index;
 pub mod import;
+pub mod index;
 pub mod schema;
 
 pub use diesel::r2d2::PoolError;
@@ -8,9 +8,8 @@ pub use diesel::result::Error as UnderlyingError;
 
 use diesel::{r2d2, PgConnection};
 
-use std::sync::Once;
-use std::env;
 use std::fmt;
+use std::sync::Once;
 
 use crate::settings;
 
@@ -29,8 +28,6 @@ pub enum QueryError {
 pub fn connection_pool() -> ConnectionPool {
     static mut SHARED: *const ConnectionPool = std::ptr::null();
     static ONCE: Once = Once::new();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     unsafe {
         ONCE.call_once(|| {

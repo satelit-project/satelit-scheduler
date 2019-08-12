@@ -1,8 +1,7 @@
-use diesel::prelude::*;
-use diesel::deserialize::{self, FromSql};
-use diesel::serialize::{self, ToSql, Output};
-use diesel::sql_types::Integer;
 use diesel::backend::Backend;
+use diesel::deserialize::{self, FromSql};
+use diesel::serialize::{self, Output, ToSql};
+use diesel::sql_types::Integer;
 
 use std::io::Write;
 
@@ -16,7 +15,7 @@ where
     fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
         match i32::from_sql(bytes)? {
             0 => Ok(Source::Anidb),
-            x => Err(format!("Unrecognized Source case: {}", x).into())
+            x => Err(format!("Unrecognized Source case: {}", x).into()),
         }
     }
 }

@@ -13,24 +13,15 @@ pub struct ImportIntent {
     /// Identifiers of anime titles that should be re-imported
     #[prost(sint32, repeated, tag="4")]
     pub reimport_ids: ::std::vec::Vec<i32>,
-    /// URL to send request with import result
-    #[prost(string, tag="5")]
-    pub callback_url: std::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ImportIntentResult {
     /// Intent ID
     #[prost(string, tag="1")]
     pub id: std::string::String,
-    /// If import succeeded then `true`, `false` otherwise
-    #[prost(bool, tag="2")]
-    pub succeeded: bool,
     /// IDs of anime titles that was not imported
-    #[prost(sint32, repeated, tag="3")]
+    #[prost(sint32, repeated, tag="2")]
     pub skipped_ids: ::std::vec::Vec<i32>,
-    /// Description of the error if import failed
-    #[prost(string, tag="4")]
-    pub error_description: std::string::String,
 }
 pub mod client {
     use ::tower_grpc::codegen::client::*;

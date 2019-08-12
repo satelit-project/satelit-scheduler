@@ -1,16 +1,14 @@
 mod convert;
 
+use crate::db::schema::{failed_imports, index_files};
 use chrono::{DateTime, Utc};
-use diesel::prelude::*;
-
-use crate::db::schema::{index_files, failed_imports};
 
 #[derive(Debug, Clone, Copy, FromSqlRow, AsExpression)]
 pub enum Source {
-    Anidb = 0
+    Anidb = 0,
 }
 
-#[derive(Queryable, Identifiable)]
+#[derive(Clone, Queryable, Identifiable)]
 pub struct IndexFile {
     pub id: i32,
     pub source: Source,
@@ -20,7 +18,7 @@ pub struct IndexFile {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Queryable, Identifiable)]
+#[derive(Clone, Queryable, Identifiable)]
 pub struct FailedImport {
     pub id: i32,
     pub index_id: i32,

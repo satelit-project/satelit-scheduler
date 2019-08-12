@@ -5,4 +5,5 @@ version = "Two"
 required_version = "1.4.3"
 ignore = [
     "src/proto",
+    "src/db/schema.rs",
 ]

@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 
 use std::error::Error;
 
-use crate::settings;
 use crate::block::blocking;
-use crate::db::index::IndexFiles;
 use crate::db::entity::IndexFile;
+use crate::db::index::IndexFiles;
+use crate::settings;
 
 pub enum CheckError {
     NetworkError(Box<dyn Error>),
@@ -35,9 +35,8 @@ impl IndexChecker {
         self.request_index()
             .map_err(|e| CheckError::NetworkError(Box::new(e)))
             .and_then(move |new_index| {
-                blocking(move || {
-                    store.queue(&new_index.hash)
-                }).map_err(|e| CheckError::StorageError(Box::new(e)))
+                blocking(move || store.queue(&new_index.hash))
+                    .map_err(|e| CheckError::StorageError(Box::new(e)))
             })
     }
 
