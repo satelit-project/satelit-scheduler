@@ -1,38 +1,47 @@
-use futures::future::poll_fn;
 use futures::prelude::*;
 use futures::sync::oneshot;
+use lazy_static::lazy_static;
+use log::error;
+use rayon::{ThreadPool, ThreadPoolBuilder};
+
+lazy_static! {
+    static ref THREAD_POOL: ThreadPool = {
+        ThreadPoolBuilder::new()
+            .build()
+            .expect("failed to init thread pool")
+    };
+}
 
 #[derive(Debug)]
-pub enum BlockingError<E: std::error::Error> {
+pub enum BlockingError<E: std::fmt::Debug> {
     Error(E),
     Cancelled,
-    Unavailable,
 }
 
 pub fn blocking<F, I, E>(mut f: F) -> impl Future<Item = I, Error = BlockingError<E>>
 where
-    F: FnMut() -> Result<I, E> + Send + 'static,
+    F: FnOnce() -> Result<I, E> + Send + 'static,
     I: Send + 'static,
-    E: std::error::Error + Send + 'static,
+    E: std::fmt::Debug + Send + 'static,
 {
     let (tx, rx) = oneshot::channel();
-    tokio::spawn(futures::lazy(move || {
-        poll_fn(move || tokio_threadpool::blocking(|| f())).then(move |result| {
+    THREAD_POOL.spawn(move || {
+        let result = f();
+
+        tokio::spawn(futures::lazy(move || {
             if tx.is_canceled() {
-                return futures::future::err(());
+                error!("blocking: receiver dropped");
+                return Err(());
             }
 
             let _ = match result {
-                Ok(inner) => match inner {
-                    Ok(item) => tx.send(Ok(item)),
-                    Err(e) => tx.send(Err(BlockingError::Error(e))),
-                },
-                Err(_) => tx.send(Err(BlockingError::Unavailable)),
+                Ok(item) => tx.send(Ok(item)),
+                Err(e) => tx.send(Err(BlockingError::Error(e))),
             };
 
-            futures::future::ok(())
-        })
-    }));
+            Ok(())
+        }));
+    });
 
     rx.then(|result| match result {
         Ok(inner) => match inner {
@@ -50,7 +59,6 @@ impl<E: std::error::Error> std::fmt::Display for BlockingError<E> {
         match self {
             Error(e) => writeln!(f, "{}", e),
             Cancelled => writeln!(f, "Channel has been closed"),
-            Unavailable => writeln!(f, "Blocking thread pool is unavailable"),
         }
     }
 }
