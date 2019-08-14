@@ -21,4 +21,15 @@ impl IndexFiles {
 
         Ok(index)
     }
+
+    pub fn mark_processed(&self, index_file: IndexFile) -> Result<IndexFile, QueryError> {
+        use crate::db::schema::index_files::dsl::*;
+
+        let conn = self.pool.get()?;
+        let new_index = diesel::update(index_files.find(index_file.id))
+            .set(pending.eq(false))
+            .get_result(&conn)?;
+
+        Ok(new_index)
+    }
 }

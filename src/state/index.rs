@@ -14,7 +14,7 @@ pub enum CheckError {
     StorageError(Box<dyn Error>),
 }
 
-pub struct IndexChecker {
+pub struct CheckIndex {
     client: Client,
     store: IndexFiles,
 }
@@ -25,9 +25,9 @@ struct NewIndexFile {
     hash: String,
 }
 
-impl IndexChecker {
+impl CheckIndex {
     pub fn new(client: Client, store: IndexFiles) -> Self {
-        IndexChecker { client, store }
+        CheckIndex { client, store }
     }
 
     pub fn latest_index(&self) -> impl Future<Item = IndexFile, Error = CheckError> {

@@ -8,8 +8,9 @@ use std::error::Error;
 use std::marker::PhantomData;
 
 use crate::block::{blocking, BlockingError};
-use crate::db::entity;
+use crate::db::entity::{self, FailedImport, IndexFile};
 use crate::db::import::FailedImports;
+use crate::db::index::IndexFiles;
 use crate::db::QueryError;
 use crate::proto::data;
 use crate::proto::import::client::ImportService;
@@ -24,14 +25,16 @@ pub enum ImportError {
 
 pub struct ImportIndex<T, R> {
     client: ImportService<T>,
-    index_file: entity::IndexFile,
+    index_files: IndexFiles,
     failed_imports: FailedImports,
     _phantom: PhantomData<R>,
 }
 
+#[derive(Clone)]
 struct DbContext {
-    index_file: entity::IndexFile,
-    failed_import: Option<entity::FailedImport>,
+    index_file: IndexFile,
+    index_files: IndexFiles,
+    failed_import: Option<FailedImport>,
     failed_imports: FailedImports,
 }
 
@@ -40,13 +43,13 @@ where
     T: GrpcService<R>,
     client::unary::Once<ImportIntent>: client::Encodable<R>,
 {
-    fn import(self) -> impl Future<Item = (), Error = ImportError> {
+    fn import(self, index_file: IndexFile) -> impl Future<Item = Self, Error = ImportError> {
         // TODO: don't want to refactor yet, waiting for async/await beta
 
         let source = entity::Source::Anidb;
         let ImportIndex {
             client,
-            index_file,
+            index_files,
             failed_imports,
             ..
         } = self;
@@ -55,9 +58,10 @@ where
         blocking(move || {
             let failed_import = failed_imports.with_source(source)?;
             let context = DbContext {
-                index_file: index_file.clone(),
+                index_file,
+                index_files,
                 failed_import,
-                failed_imports: failed_imports.clone(),
+                failed_imports,
             };
             Ok(context)
         })
@@ -88,30 +92,45 @@ where
                 .start_import(Request::new(intent))
                 .map_err(|e| ImportError::NetworkError(Box::new(e)))
                 .join(Ok(context))
+                .and_then(move |data| Ok((client, data)))
         })
         // on response
-        .and_then(move |(response, context)| {
+        .and_then(move |(client, (response, context))| {
             let result = response.into_inner();
 
             // preparing to write data from response to DB
             blocking(move || {
+                let DbContext {
+                    index_files,
+                    index_file,
+                    failed_imports,
+                    failed_import,
+                } = context;
+
                 // mark previously failed to import ids as reimported
-                if let Some(ref failed_import) = context.failed_import {
-                    context
-                        .failed_imports
-                        .mark_reimported(failed_import.clone())?;
+                if let Some(failed_import) = failed_import {
+                    failed_imports.mark_reimported(failed_import)?;
                 }
 
                 // remember any titles that failed to import
                 if !result.skipped_ids.is_empty() {
-                    context
-                        .failed_imports
-                        .create(&context.index_file, &result.skipped_ids)?;
+                    failed_imports.create(&index_file, &result.skipped_ids)?;
                 }
 
-                Ok(())
+                index_files.mark_processed(index_file)?;
+                Ok((index_files, failed_imports))
             })
             .map_err(|e: BlockingError<QueryError>| ImportError::StorageError(Box::new(e)))
+            .and_then(move |(index_files, failed_imports)| {
+                let me = Self {
+                    client,
+                    index_files,
+                    failed_imports,
+                    _phantom: PhantomData,
+                };
+
+                Ok(me)
+            })
         })
     }
 }
