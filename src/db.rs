@@ -7,11 +7,18 @@ pub use diesel::r2d2::PoolError;
 pub use diesel::result::Error as UnderlyingError;
 
 use diesel::{r2d2, PgConnection};
+use lazy_static::lazy_static;
 
 use std::fmt;
-use std::sync::Once;
 
 use crate::settings;
+
+lazy_static! {
+    static ref SHARED_POOL: ConnectionPool = {
+        new_connection_pool(settings::shared().db())
+                .expect("failed to escablish db connection")
+    };
+}
 
 /// PostgresQL connection from connection pool
 pub type PgPooledConnection = r2d2::PooledConnection<r2d2::ConnectionManager<PgConnection>>;
@@ -30,18 +37,7 @@ pub enum QueryError {
 }
 
 pub fn connection_pool() -> ConnectionPool {
-    static mut SHARED: *const ConnectionPool = std::ptr::null();
-    static ONCE: Once = Once::new();
-
-    unsafe {
-        ONCE.call_once(|| {
-            let pool = new_connection_pool(settings::shared().db())
-                .expect("failed to escablish db connection");
-            SHARED = Box::into_raw(Box::new(pool));
-        });
-
-        (*SHARED).clone()
-    }
+    SHARED_POOL.clone()
 }
 
 pub fn new_connection_pool(settings: &settings::Db) -> Result<ConnectionPool, PoolError> {

@@ -1,22 +1,18 @@
 use config::{Config, ConfigError, File};
 use serde::Deserialize;
+use lazy_static::lazy_static;
 
-use std::sync::Once;
 use std::time::Duration;
+
+lazy_static! {
+    static ref SHARED_SETTINGS: Settings = {
+        Settings::new().expect("failed to read settings")
+    };
+}
 
 /// Returns reference to global settings instance
 pub fn shared() -> &'static Settings {
-    static mut SHARED: *const Settings = std::ptr::null();
-    static ONCE: Once = Once::new();
-
-    unsafe {
-        ONCE.call_once(|| {
-            let settings = Settings::new().expect("failed to read settings");
-            SHARED = Box::into_raw(Box::new(settings));
-        });
-
-        &*SHARED
-    }
+    &SHARED_SETTINGS
 }
 
 /// App settings used to configure it's state
