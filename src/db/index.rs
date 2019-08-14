@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use crate::db::entity::IndexFile;
 use crate::db::{ConnectionPool, QueryError};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct IndexFiles {
     pool: ConnectionPool,
 }

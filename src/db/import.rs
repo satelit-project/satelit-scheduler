@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use crate::db::entity::{FailedImport, IndexFile, Source};
 use crate::db::{ConnectionPool, QueryError};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct FailedImports {
     pool: ConnectionPool,
 }

@@ -13,8 +13,12 @@ use std::sync::Once;
 
 use crate::settings;
 
+/// PostgresQL connection from connection pool
+pub type PgPooledConnection = r2d2::PooledConnection<r2d2::ConnectionManager<PgConnection>>;
+
 /// Database connection pool
-type ConnectionPool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
+#[derive(Clone)]
+pub struct ConnectionPool(r2d2::Pool<r2d2::ConnectionManager<PgConnection>>);
 
 /// Represents an error that may happen on querying db
 #[derive(Debug)]
@@ -42,10 +46,24 @@ pub fn connection_pool() -> ConnectionPool {
 
 pub fn new_connection_pool(settings: &settings::Db) -> Result<ConnectionPool, PoolError> {
     let manager = r2d2::ConnectionManager::<PgConnection>::new(settings.url());
-    r2d2::Builder::new()
+    let pool = r2d2::Builder::new()
         .max_size(settings.max_connections())
         .connection_timeout(settings.connection_timeout())
-        .build(manager)
+        .build(manager)?;
+
+    Ok(ConnectionPool(pool))
+}
+
+impl ConnectionPool {
+    pub fn get(&self) -> Result<PgPooledConnection, PoolError> {
+        self.0.get()
+    }
+}
+
+impl std::fmt::Debug for ConnectionPool {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(f, "pg connection pool")
+    }
 }
 
 impl From<PoolError> for QueryError {

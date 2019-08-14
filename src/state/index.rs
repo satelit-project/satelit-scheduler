@@ -2,17 +2,11 @@ use futures::prelude::*;
 use reqwest::r#async::Client;
 use serde::{Deserialize, Serialize};
 
-use std::error::Error;
-
+use super::StateError;
 use crate::block::blocking;
 use crate::db::entity::IndexFile;
 use crate::db::index::IndexFiles;
 use crate::settings;
-
-pub enum CheckError {
-    NetworkError(Box<dyn Error>),
-    StorageError(Box<dyn Error>),
-}
 
 pub struct CheckIndex {
     client: Client,
@@ -30,14 +24,11 @@ impl CheckIndex {
         CheckIndex { client, store }
     }
 
-    pub fn latest_index(&self) -> impl Future<Item = IndexFile, Error = CheckError> {
+    pub fn latest_index(&self) -> impl Future<Item = IndexFile, Error = StateError> {
         let store = self.store.clone();
         self.request_index()
-            .map_err(|e| CheckError::NetworkError(Box::new(e)))
-            .and_then(move |new_index| {
-                blocking(move || store.queue(&new_index.hash))
-                    .map_err(|e| CheckError::StorageError(Box::new(e)))
-            })
+            .from_err()
+            .and_then(move |new_index| blocking(move || store.queue(&new_index.hash)).from_err())
     }
 
     fn request_index(&self) -> impl Future<Item = NewIndexFile, Error = reqwest::Error> {

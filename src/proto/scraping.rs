@@ -8,19 +8,6 @@ pub struct ScrapeIntent {
     #[prost(enumeration="super::data::Source", tag="2")]
     pub source: i32,
 }
-/// Result of scraping process
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ScrapeIntentResult {
-    /// Intent ID
-    #[prost(string, tag="1")]
-    pub id: std::string::String,
-    /// Wherever scraping was successful
-    #[prost(bool, tag="2")]
-    pub succeeded: bool,
-    /// Error description if scraping was unsuccessful
-    #[prost(string, tag="3")]
-    pub error_description: std::string::String,
-}
 /// Represents a task for anime pages scraping
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Task {
@@ -69,7 +56,7 @@ pub struct TaskFinish {
 }
 pub mod client {
     use ::tower_grpc::codegen::client::*;
-    use super::{ScrapeIntent, ScrapeIntentResult, TaskCreate, Task, TaskYield, TaskFinish};
+    use super::{ScrapeIntent, TaskCreate, Task, TaskYield, TaskFinish};
 
     /// A service to start scraping process
     /// 
@@ -104,7 +91,7 @@ pub mod client {
         /// 
         /// 'Scraper' should implement a server side of the service and
         /// something from the outside needs to trigger scraping process.
-        pub fn start_scraping<R>(&mut self, request: grpc::Request<ScrapeIntent>) -> grpc::unary::ResponseFuture<ScrapeIntentResult, T::Future, T::ResponseBody>
+        pub fn start_scraping<R>(&mut self, request: grpc::Request<ScrapeIntent>) -> grpc::unary::ResponseFuture<(), T::Future, T::ResponseBody>
         where T: grpc::GrpcService<R>,
               grpc::unary::Once<ScrapeIntent>: grpc::Encodable<R>,
         {
@@ -182,7 +169,7 @@ pub mod client {
 
 pub mod server {
     use ::tower_grpc::codegen::server::*;
-    use super::{ScrapeIntent, ScrapeIntentResult, TaskCreate, Task, TaskYield, TaskFinish};
+    use super::{ScrapeIntent, TaskCreate, Task, TaskYield, TaskFinish};
 
     // Redefine the try_ready macro so that it doesn't need to be explicitly
     // imported by the user of this generated code.
@@ -199,7 +186,7 @@ pub mod server {
     /// 'Scraper' should implement a server side of the service and
     /// something from the outside needs to trigger scraping process.
     pub trait ScraperService: Clone {
-        type StartScrapingFuture: futures::Future<Item = grpc::Response<ScrapeIntentResult>, Error = grpc::Status>;
+        type StartScrapingFuture: futures::Future<Item = grpc::Response<()>, Error = grpc::Status>;
 
         /// Starts web scraping and returns result of the operation when finished
         fn start_scraping(&mut self, request: grpc::Request<ScrapeIntent>) -> Self::StartScrapingFuture;
@@ -376,14 +363,14 @@ pub mod server {
 
         pub mod methods {
             use ::tower_grpc::codegen::server::*;
-            use super::super::{ScraperService, ScrapeIntent, ScrapeIntentResult};
+            use super::super::{ScraperService, ScrapeIntent};
 
             pub struct StartScraping<T>(pub T);
 
             impl<T> tower::Service<grpc::Request<ScrapeIntent>> for StartScraping<T>
             where T: ScraperService,
             {
-                type Response = grpc::Response<ScrapeIntentResult>;
+                type Response = grpc::Response<()>;
                 type Error = grpc::Status;
                 type Future = T::StartScrapingFuture;
 

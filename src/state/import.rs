@@ -4,10 +4,10 @@ use tower_grpc::generic::client::GrpcService;
 use tower_grpc::Request;
 use uuid::Uuid;
 
-use std::error::Error;
 use std::marker::PhantomData;
 
-use crate::block::{blocking, BlockingError};
+use super::StateError;
+use crate::block::blocking;
 use crate::db::entity::{self, FailedImport, IndexFile};
 use crate::db::import::FailedImports;
 use crate::db::index::IndexFiles;
@@ -18,11 +18,6 @@ use crate::proto::import::ImportIntent;
 use crate::settings;
 
 #[derive(Debug)]
-pub enum ImportError {
-    StorageError(Box<dyn Error>),
-    NetworkError(Box<dyn Error>),
-}
-
 pub struct ImportIndex<T, R> {
     client: ImportService<T>,
     index_files: IndexFiles,
@@ -43,7 +38,7 @@ where
     T: GrpcService<R>,
     client::unary::Once<ImportIntent>: client::Encodable<R>,
 {
-    fn import(self, index_file: IndexFile) -> impl Future<Item = Self, Error = ImportError> {
+    fn import(self, index_file: IndexFile) -> impl Future<Item = Self, Error = StateError> {
         // TODO: don't want to refactor yet, waiting for async/await beta
 
         let source = entity::Source::Anidb;
@@ -65,13 +60,9 @@ where
             };
             Ok(context)
         })
-        .map_err(|e: BlockingError<QueryError>| ImportError::StorageError(Box::new(e)))
+        .from_err()
         // wait until grpc client ready to send requests
-        .join(
-            client
-                .ready()
-                .map_err(|e| ImportError::NetworkError(Box::new(e))),
-        )
+        .join(client.ready().from_err())
         // send import intent (start index import)
         .and_then(move |(context, mut client)| {
             let source = <entity::Source as Into<data::Source>>::into(source) as i32;
@@ -90,7 +81,7 @@ where
 
             client
                 .start_import(Request::new(intent))
-                .map_err(|e| ImportError::NetworkError(Box::new(e)))
+                .from_err()
                 .join(Ok(context))
                 .and_then(move |data| Ok((client, data)))
         })
@@ -117,10 +108,12 @@ where
                     failed_imports.create(&index_file, &result.skipped_ids)?;
                 }
 
+                // mark index file as imported
                 index_files.mark_processed(index_file)?;
                 Ok((index_files, failed_imports))
             })
-            .map_err(|e: BlockingError<QueryError>| ImportError::StorageError(Box::new(e)))
+            .from_err()
+            // recreate myself to keep client
             .and_then(move |(index_files, failed_imports)| {
                 let me = Self {
                     client,

@@ -18,7 +18,7 @@ pub enum BlockingError<E: std::fmt::Debug> {
     Cancelled,
 }
 
-pub fn blocking<F, I, E>(mut f: F) -> impl Future<Item = I, Error = BlockingError<E>>
+pub fn blocking<F, I, E>(f: F) -> impl Future<Item = I, Error = BlockingError<E>>
 where
     F: FnOnce() -> Result<I, E> + Send + 'static,
     I: Send + 'static,
