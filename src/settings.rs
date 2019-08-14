@@ -1,13 +1,11 @@
 use config::{Config, ConfigError, File};
-use serde::Deserialize;
 use lazy_static::lazy_static;
+use serde::Deserialize;
 
 use std::time::Duration;
 
 lazy_static! {
-    static ref SHARED_SETTINGS: Settings = {
-        Settings::new().expect("failed to read settings")
-    };
+    static ref SHARED_SETTINGS: Settings = { Settings::new().expect("failed to read settings") };
 }
 
 /// Returns reference to global settings instance

@@ -28,19 +28,15 @@ where
     THREAD_POOL.spawn(move || {
         let result = f();
 
-        tokio::spawn(futures::lazy(move || {
-            if tx.is_canceled() {
-                error!("blocking: receiver dropped");
-                return Err(());
-            }
+        if tx.is_canceled() {
+            error!("blocking: receiver dropped");
+            return;
+        }
 
-            let _ = match result {
-                Ok(item) => tx.send(Ok(item)),
-                Err(e) => tx.send(Err(BlockingError::Error(e))),
-            };
-
-            Ok(())
-        }));
+        let _ = match result {
+            Ok(item) => tx.send(Ok(item)),
+            Err(e) => tx.send(Err(BlockingError::Error(e))),
+        };
     });
 
     rx.then(|result| match result {

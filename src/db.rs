@@ -15,8 +15,7 @@ use crate::settings;
 
 lazy_static! {
     static ref SHARED_POOL: ConnectionPool = {
-        new_connection_pool(settings::shared().db())
-                .expect("failed to escablish db connection")
+        new_connection_pool(settings::shared().db()).expect("failed to escablish db connection")
     };
 }
 
