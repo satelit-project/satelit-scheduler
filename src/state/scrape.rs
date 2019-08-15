@@ -19,7 +19,11 @@ pub struct ScrapeData<T, R> {
 
 impl<T, R> ScrapeData<T, R>
 where
-    T: GrpcService<R>,
+    T: GrpcService<R> + Send,
+    T::Future: Send,
+    T::ResponseBody: Send,
+    <<T as GrpcService<R>>::ResponseBody as tower_grpc::Body>::Data: Send,
+    R: Send,
     unary::Once<ScrapeIntent>: Encodable<R>,
 {
     pub fn new(client: ScraperService<T>) -> Self {
@@ -35,7 +39,7 @@ where
         self.should_scrape
     }
 
-    pub fn start_scraping(self) -> impl Future<Item = Self, Error = StateError> {
+    pub fn start_scraping(self) -> impl Future<Item = Self, Error = StateError> + Send {
         let ScrapeData { client, .. } = self;
         client.ready().from_err().and_then(|mut client| {
             let intent = ScrapeIntent {

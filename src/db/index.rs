@@ -9,6 +9,10 @@ pub struct IndexFiles {
 }
 
 impl IndexFiles {
+    pub fn new(pool: ConnectionPool) -> Self {
+        IndexFiles { pool }
+    }
+
     pub fn queue(&self, new_hash: &str) -> Result<IndexFile, QueryError> {
         use crate::db::schema::index_files::dsl::*;
 

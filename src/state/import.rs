@@ -50,10 +50,17 @@ impl<T, R> ImportIndex<T, R> {
 
 impl<T, R> ImportIndex<T, R>
 where
-    T: GrpcService<R>,
+    T: GrpcService<R> + Send,
+    T::Future: Send,
+    T::ResponseBody: Send,
+    <<T as GrpcService<R>>::ResponseBody as tower_grpc::Body>::Data: Send,
+    R: Send,
     client::unary::Once<ImportIntent>: client::Encodable<R>,
 {
-    pub fn import(self, index_file: IndexFile) -> impl Future<Item = Self, Error = StateError> {
+    pub fn import(
+        self,
+        index_file: IndexFile,
+    ) -> impl Future<Item = Self, Error = StateError> + Send {
         // TODO: don't want to refactor yet, waiting for async/await beta
 
         let source = entity::Source::Anidb;

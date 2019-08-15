@@ -29,14 +29,14 @@ pub enum StateError {
     GrpcError(Status),
     HttpError(HttpError),
     Timeout,
-    UnknownError(Box<dyn std::error::Error>),
+    UnknownError(Box<dyn std::error::Error + Send>),
 }
 
 enum ScrapeState<T, R> {
     Initial,
-    CheckIndex(Box<dyn Future<Item = IndexFile, Error = StateError>>),
-    ImportIndex(Box<dyn Future<Item = import::ImportIndex<T, R>, Error = StateError>>),
-    ScrapeData(Box<dyn Future<Item = scrape::ScrapeData<T, R>, Error = StateError>>),
+    CheckIndex(Box<dyn Future<Item = IndexFile, Error = StateError> + Send>),
+    ImportIndex(Box<dyn Future<Item = import::ImportIndex<T, R>, Error = StateError> + Send>),
+    ScrapeData(Box<dyn Future<Item = scrape::ScrapeData<T, R>, Error = StateError> + Send>),
 }
 
 pub struct ScrapePlan<T, R> {
@@ -51,7 +51,11 @@ pub struct ScrapePlan<T, R> {
 
 impl<T, R> ScrapePlan<T, R>
 where
-    T: GrpcService<R>,
+    T: GrpcService<R> + Send,
+    T::Future: Send,
+    T::ResponseBody: Send,
+    <<T as GrpcService<R>>::ResponseBody as tower_grpc::Body>::Data: Send,
+    R: Send,
     client::unary::Once<ImportIntent>: client::Encodable<R>,
     client::unary::Once<ScrapeIntent>: client::Encodable<R>,
 {
@@ -73,7 +77,7 @@ where
         }
     }
 
-    fn check_index(&mut self) -> impl Future<Item = IndexFile, Error = StateError> {
+    fn check_index(&mut self) -> impl Future<Item = IndexFile, Error = StateError> + Send {
         let client = self
             .http_client
             .take()
@@ -86,7 +90,7 @@ where
     fn import_index(
         &mut self,
         index: IndexFile,
-    ) -> impl Future<Item = import::ImportIndex<T, R>, Error = StateError> {
+    ) -> impl Future<Item = import::ImportIndex<T, R>, Error = StateError> + Send {
         let import_service = self
             .import_service
             .take()
@@ -101,7 +105,9 @@ where
         import_index.import(index)
     }
 
-    fn scrape_data(&mut self) -> impl Future<Item = scrape::ScrapeData<T, R>, Error = StateError> {
+    fn scrape_data(
+        &mut self,
+    ) -> impl Future<Item = scrape::ScrapeData<T, R>, Error = StateError> + Send {
         let scraper_service = self
             .scraper_service
             .take()
@@ -114,15 +120,18 @@ where
     fn repeat_scrape_data(
         &mut self,
         scrape_data: ScrapeData<T, R>,
-    ) -> impl Future<Item = scrape::ScrapeData<T, R>, Error = StateError> {
+    ) -> impl Future<Item = scrape::ScrapeData<T, R>, Error = StateError> + Send {
         scrape_data.start_scraping()
     }
 }
 
 impl<T, R> Future for ScrapePlan<T, R>
 where
-    T: GrpcService<R> + 'static,
-    R: 'static,
+    T: GrpcService<R> + Send + 'static,
+    T::Future: Send,
+    T::ResponseBody: Send,
+    <<T as GrpcService<R>>::ResponseBody as tower_grpc::Body>::Data: Send,
+    R: Send + 'static,
     client::unary::Once<ImportIntent>: client::Encodable<R>,
     client::unary::Once<ScrapeIntent>: client::Encodable<R>,
 {
