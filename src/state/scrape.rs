@@ -13,6 +13,7 @@ use crate::proto::scraping::ScrapeIntent;
 
 pub struct ScrapeData<T, R> {
     client: ScraperService<T>,
+    should_scrape: bool,
     _request: PhantomData<R>,
 }
 
@@ -24,8 +25,14 @@ where
     pub fn new(client: ScraperService<T>) -> Self {
         Self {
             client,
+            should_scrape: true,
             _request: PhantomData,
         }
+    }
+
+    /// Returns `true` if there's may be data to scrape and `false` otherwise
+    pub fn should_scrape(&self) -> bool {
+        self.should_scrape
     }
 
     pub fn start_scraping(self) -> impl Future<Item = Self, Error = StateError> {
@@ -40,8 +47,11 @@ where
             client
                 .start_scraping(request)
                 .from_err()
-                .and_then(move |_| {
-                    let me = Self::new(client);
+                .and_then(move |response| {
+                    let result = response.into_inner();
+                    let mut me = Self::new(client);
+
+                    me.should_scrape = result.may_continue;
                     Ok(me)
                 })
         })

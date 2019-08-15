@@ -22,7 +22,7 @@ pub struct ImportIndex<T, R> {
     client: ImportService<T>,
     index_files: IndexFiles,
     failed_imports: FailedImports,
-    _phantom: PhantomData<R>,
+    _request: PhantomData<R>,
 }
 
 #[derive(Clone)]
@@ -33,12 +33,27 @@ struct DbContext {
     failed_imports: FailedImports,
 }
 
+impl<T, R> ImportIndex<T, R> {
+    pub fn new(
+        client: ImportService<T>,
+        index_files: IndexFiles,
+        failed_imports: FailedImports,
+    ) -> Self {
+        ImportIndex {
+            client,
+            index_files,
+            failed_imports,
+            _request: PhantomData,
+        }
+    }
+}
+
 impl<T, R> ImportIndex<T, R>
 where
     T: GrpcService<R>,
     client::unary::Once<ImportIntent>: client::Encodable<R>,
 {
-    fn import(self, index_file: IndexFile) -> impl Future<Item = Self, Error = StateError> {
+    pub fn import(self, index_file: IndexFile) -> impl Future<Item = Self, Error = StateError> {
         // TODO: don't want to refactor yet, waiting for async/await beta
 
         let source = entity::Source::Anidb;
@@ -115,13 +130,7 @@ where
             .from_err()
             // recreate myself to keep client
             .and_then(move |(index_files, failed_imports)| {
-                let me = Self {
-                    client,
-                    index_files,
-                    failed_imports,
-                    _phantom: PhantomData,
-                };
-
+                let me = Self::new(client, index_files, failed_imports);
                 Ok(me)
             })
         })
