@@ -28,7 +28,6 @@ pub enum StateError {
     StorageError(QueryError),
     GrpcError(Status),
     HttpError(HttpError),
-    Timeout,
     UnknownError(Box<dyn std::error::Error + Send>),
 }
 

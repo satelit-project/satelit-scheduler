@@ -1,3 +1,5 @@
+use satelit_scheduler::try_use;
+
 fn main() {
-    println!("Hello, world!");
+    try_use();
 }
