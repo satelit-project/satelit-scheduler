@@ -1,22 +1,16 @@
-[anidb]
-dump_url = "http://anidb.net/api/anime-titles.xml.gz"
-download_path = "static/anidb_dump_next.gz"
-serve_path = "static/anidb_dump.gz"
-reimport_path = "static/reimports.json"
-
 [db]
 url = "postgres://test:qwerty@localhost/scheduler"
 max_connections = 16
 connection_timeout = 10
 
-[service.import]
-host = "127.0.0.1"
-port = 10601
+[service.indexer]
+anidb_url = "http://indexer.shitty.moe/index/anidb"
+connection_timeout = 60    # 1 min
 
-[service.task]
-host = "127.0.0.1"
-port = 10602
+[service.import]
+url = "http://import.shitty.moe"
+request_timeout = 3600  # 1 hour
 
 [service.scraper]
-host = "127.0.0.1"
-port = 10603
+url = "http://scraper.shitty.moe"
+request_timeout = 3600  # 1 hour

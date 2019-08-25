@@ -38,8 +38,9 @@ enum ScrapeState<T, R> {
     ScrapeData(Box<dyn Future<Item = scrape::ScrapeData<T, R>, Error = StateError> + Send>),
 }
 
-pub struct ScrapePlan<T, R> {
+pub struct ScrapePlan<'a, T, R> {
     state: ScrapeState<T, R>,
+    index_url: &'a str,
     index_files: IndexFiles,
     failed_imports: FailedImports,
     import_service: Option<ImportService<T>>,
@@ -48,7 +49,7 @@ pub struct ScrapePlan<T, R> {
     _request: PhantomData<R>,
 }
 
-impl<T, R> ScrapePlan<T, R>
+impl<'a, T, R> ScrapePlan<'a, T, R>
 where
     T: GrpcService<R> + Send,
     T::Future: Send,
@@ -59,6 +60,7 @@ where
     client::unary::Once<ScrapeIntent>: client::Encodable<R>,
 {
     pub fn new(
+        index_url: &'a str,
         index_files: IndexFiles,
         failed_imports: FailedImports,
         import_service: ImportService<T>,
@@ -67,6 +69,7 @@ where
     ) -> Self {
         ScrapePlan {
             state: ScrapeState::Initial,
+            index_url,
             index_files,
             failed_imports,
             import_service: Some(import_service),
@@ -82,7 +85,7 @@ where
             .take()
             .expect("index should be checked once");
 
-        let check_index = index::CheckIndex::new(client, self.index_files.clone());
+        let check_index = index::CheckIndex::new(client, self.index_files.clone(), self.index_url);
         check_index.latest_index()
     }
 
@@ -124,7 +127,7 @@ where
     }
 }
 
-impl<T, R> Future for ScrapePlan<T, R>
+impl<'a, T, R> Future for ScrapePlan<'a, T, R>
 where
     T: GrpcService<R> + Send + 'static,
     T::Future: Send,

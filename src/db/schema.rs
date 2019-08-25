@@ -14,6 +14,7 @@ table! {
         id -> Int4,
         source -> Int4,
         hash -> Text,
+        url -> Text,
         pending -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,

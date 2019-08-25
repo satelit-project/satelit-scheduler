@@ -6,11 +6,11 @@ use super::StateError;
 use crate::block::blocking;
 use crate::db::entity::IndexFile;
 use crate::db::index::IndexFiles;
-use crate::settings;
 
-pub struct CheckIndex {
+pub struct CheckIndex<'a> {
     client: Client,
     store: IndexFiles,
+    index_url: &'a str
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,9 +19,9 @@ struct NewIndexFile {
     hash: String,
 }
 
-impl CheckIndex {
-    pub fn new(client: Client, store: IndexFiles) -> Self {
-        CheckIndex { client, store }
+impl<'a> CheckIndex<'a> {
+    pub fn new(client: Client, store: IndexFiles, index_url: &'a str) -> Self {
+        CheckIndex { client, store, index_url }
     }
 
     pub fn latest_index(&self) -> impl Future<Item = IndexFile, Error = StateError> + Send {
@@ -32,9 +32,8 @@ impl CheckIndex {
     }
 
     fn request_index(&self) -> impl Future<Item = NewIndexFile, Error = reqwest::Error> + Send {
-        let url = settings::shared().anidb().dump_url();
         self.client
-            .get(url)
+            .get(self.index_url)
             .send()
             .and_then(|r| r.error_for_status())
             .and_then(|mut r| r.json::<NewIndexFile>())

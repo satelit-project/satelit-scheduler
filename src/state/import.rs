@@ -15,7 +15,6 @@ use crate::db::QueryError;
 use crate::proto::data;
 use crate::proto::import::client::ImportService;
 use crate::proto::import::ImportIntent;
-use crate::settings;
 
 #[derive(Debug)]
 pub struct ImportIndex<T, R> {
@@ -88,7 +87,6 @@ where
         // send import intent (start index import)
         .and_then(move |(context, mut client)| {
             let source = <entity::Source as Into<data::Source>>::into(source) as i32;
-            let dump_url = settings::shared().anidb().dump_url().to_string();
             let mut reimport_ids = vec![];
             if let Some(ref failed_import) = context.failed_import {
                 reimport_ids.extend(failed_import.title_ids.iter())
@@ -97,7 +95,7 @@ where
             let intent = ImportIntent {
                 id: Uuid::new_v4().to_string(),
                 source,
-                dump_url,
+                dump_url: context.index_file.url.clone(),
                 reimport_ids,
             };
 

@@ -5,6 +5,7 @@ create table index_files
     id         serial                    not null,
     source     int                       not null,
     hash       text                      not null,
+    url        text                      not null,
     pending    boolean     default true  not null,
     created_at timestamptz default now() not null,
     updated_at timestamptz default now() not null

@@ -13,6 +13,7 @@ pub struct IndexFile {
     pub id: i32,
     pub source: Source,
     pub hash: String,
+    pub url: String,
     pub pending: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

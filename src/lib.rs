@@ -70,6 +70,7 @@ pub fn try_use() {
                 let failed_imports = FailedImports::new(pool.clone());
 
                 let scrape = state::ScrapePlan::new(
+                    settings::shared().services().indexer().url(),
                     index_files,
                     failed_imports,
                     import_service,
