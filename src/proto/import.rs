@@ -2,23 +2,26 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ImportIntent {
     /// Intent ID
-    #[prost(string, tag="1")]
-    pub id: std::string::String,
-    /// Represents an external DB from where anime titles index should be imported
+    #[prost(message, optional, tag="1")]
+    pub id: ::std::option::Option<super::uuid::Uuid>,
+    /// External data source to which index files belongs to
     #[prost(enumeration="super::data::Source", tag="2")]
     pub source: i32,
-    /// URL of anime titles dump location
+    /// URL of latest anime titles index
     #[prost(string, tag="3")]
-    pub dump_url: std::string::String,
+    pub new_index_url: std::string::String,
+    /// URL of previous anime titles index
+    #[prost(string, tag="4")]
+    pub old_index_url: std::string::String,
     /// Identifiers of anime titles that should be re-imported
-    #[prost(sint32, repeated, tag="4")]
+    #[prost(sint32, repeated, tag="5")]
     pub reimport_ids: ::std::vec::Vec<i32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ImportIntentResult {
     /// Intent ID
-    #[prost(string, tag="1")]
-    pub id: std::string::String,
+    #[prost(message, optional, tag="1")]
+    pub id: ::std::option::Option<super::uuid::Uuid>,
     /// IDs of anime titles that was not imported
     #[prost(sint32, repeated, tag="2")]
     pub skipped_ids: ::std::vec::Vec<i32>,
