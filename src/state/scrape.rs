@@ -1,63 +1,57 @@
-use futures::prelude::*;
-use tower_grpc::client::{unary, Encodable};
-use tower_grpc::generic::client::GrpcService;
-use tower_grpc::Request;
-use uuid::Uuid;
-
-use std::marker::PhantomData;
+use tonic::transport::Channel;
 
 use super::StateError;
-use crate::db::entity;
-use crate::proto::scraping::client::ScraperService;
+use crate::db::entity::Source;
+use crate::proto::uuid::Uuid;
 use crate::proto::scraping::ScrapeIntent;
+use crate::proto::scraping::scraper_service_client::ScraperServiceClient;
 
-pub struct ScrapeData<T, R> {
-    client: ScraperService<T>,
+/// Asks scraping RPC service to start anime scraping.
+pub struct ScrapeData {
+    /// RPC service client.
+    client: ScraperServiceClient<Channel>,
+
+    /// From where to scrape data.
+    source: Source,
+
+    /// Indicates if there's data for scraping service to scrape.
     should_scrape: bool,
-    _request: PhantomData<R>,
 }
 
-impl<T, R> ScrapeData<T, R>
-where
-    T: GrpcService<R> + Send,
-    T::Future: Send,
-    T::ResponseBody: Send,
-    <<T as GrpcService<R>>::ResponseBody as tower_grpc::Body>::Data: Send,
-    R: Send,
-    unary::Once<ScrapeIntent>: Encodable<R>,
-{
-    pub fn new(client: ScraperService<T>) -> Self {
-        Self {
-            client,
-            should_scrape: true,
-            _request: PhantomData,
-        }
+// MARK: impl ScrapeData
+
+impl ScrapeData {
+    /// Creates new struct instance.
+    pub fn new(client: ScraperServiceClient<Channel>, source: Source) -> Self {
+        ScrapeData { client, source, should_scrape: true }
     }
 
-    /// Returns `true` if there's may be data to scrape and `false` otherwise
+    /// Returns `true` if there's data to scrape of `false` otherwise.
+    ///
+    /// If `false` is returned that means there's no scraping will be performed
+    /// on subsequent calls to `start_scraping`, presumably. RPC call will be made
+    /// anyway and it's possible that returned value is out of date. So you should
+    /// use it only as a suggestion.
     pub fn should_scrape(&self) -> bool {
         self.should_scrape
     }
 
-    pub fn start_scraping(self) -> impl Future<Item = Self, Error = StateError> + Send {
-        let ScrapeData { client, .. } = self;
-        client.ready().from_err().and_then(|mut client| {
-            let intent = ScrapeIntent {
-                id: Uuid::new_v4().to_string(),
-                source: entity::Source::Anidb as i32,
-            };
-            let request = Request::new(intent);
+    /// Start scraping process and waits until it's done.
+    ///
+    /// If it's not all data has been scraped, `should_scrape()` will
+    /// return `true`. In that case feel free to call this method again.
+    /// It's still safe to call the method again if `should_scrape()`
+    /// returns `false`. The RPC call will be made but scraper service
+    /// may return immediatelly.
+    pub async fn start_scraping(&mut self) -> Result<(), StateError> {
+        let intent = ScrapeIntent {
+            id: Some(Uuid::new()),
+            source: self.source as i32,
+        };
 
-            client
-                .start_scraping(request)
-                .from_err()
-                .and_then(move |response| {
-                    let result = response.into_inner();
-                    let mut me = Self::new(client);
+        let res = self.client.start_scraping(intent).await?;
+        self.should_scrape = res.get_ref().may_continue;
 
-                    me.should_scrape = result.may_continue;
-                    Ok(me)
-                })
-        })
+        Ok(())
     }
 }

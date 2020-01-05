@@ -1,41 +1,84 @@
-use futures::prelude::*;
-use reqwest::r#async::Client;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use tokio::task;
 
 use super::StateError;
-use crate::block::blocking;
-use crate::db::entity::IndexFile;
+use crate::db::entity::{IndexFile, Source};
 use crate::db::index::IndexFiles;
 
-pub struct CheckIndex<'a> {
+/// Service that fetches latest anime index files.
+pub struct UpdateIndex<'a> {
+    /// HTTP client.
     client: Client,
+
+    /// DB access layer for anime index files.
     store: IndexFiles,
-    index_url: &'a str
+
+    /// URL to get info about latest index files.
+    index_url: &'a str,
 }
 
+/// Represents lates anime index file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct NewIndexFile {
-    url: String,
+    /// Index file identifier.
+    id: String,
+
+    /// Hash of the index file.
     hash: String,
+
+    /// Type of DB index file relates to.
+    source: NewIndexFileSource,
 }
 
-impl<'a> CheckIndex<'a> {
+/// Represents type of DB an index file relates to.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum NewIndexFileSource {
+    Anidb,
+}
+
+// MARK: impl UpdateIndex
+
+impl<'a> UpdateIndex<'a> {
     pub fn new(client: Client, store: IndexFiles, index_url: &'a str) -> Self {
-        CheckIndex { client, store, index_url }
+        UpdateIndex {
+            client,
+            store,
+            index_url,
+        }
     }
 
-    pub fn latest_index(&self) -> impl Future<Item = IndexFile, Error = StateError> + Send {
-        let store = self.store.clone();
-        self.request_index()
-            .from_err()
-            .and_then(move |new_index| blocking(move || store.queue(&new_index.hash)).from_err())
-    }
-
-    fn request_index(&self) -> impl Future<Item = NewIndexFile, Error = reqwest::Error> + Send {
-        self.client
+    /// Updates and returns latest anime index file.
+    ///
+    /// In case if there's new index file available it will be saved to DB with
+    /// `pending == true` status. Otherwise, existing record from the DB will be returned.
+    pub async fn latest_index(&self) -> Result<IndexFile, StateError> {
+        let resp = self
+            .client
             .get(self.index_url)
             .send()
-            .and_then(|r| r.error_for_status())
-            .and_then(|mut r| r.json::<NewIndexFile>())
+            .await?
+            .error_for_status()?;
+        let new_index = resp.json::<NewIndexFile>().await?;
+
+        let store = self.store.clone();
+        let index = task::spawn_blocking(move || {
+            let hash = &new_index.hash;
+            let source = new_index.source.into();
+            store.queue(hash, source)
+        })
+        .await??;
+        Ok(index)
+    }
+}
+
+// MARK: impl NewIndexFileSource
+
+impl From<NewIndexFileSource> for Source {
+    fn from(s: NewIndexFileSource) -> Self {
+        match s {
+            NewIndexFileSource::Anidb => Source::Anidb,
+        }
     }
 }

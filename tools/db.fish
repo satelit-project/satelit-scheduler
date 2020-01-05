@@ -2,7 +2,7 @@
 
 set REPO_DIR (git rev-parse --show-toplevel)
 set CONTAINER_NAME pg-satelit-scheduler
-set DB_NAME postgres
+set DB_NAME satelit-scheduler
 set DB_PASSWD postgres
 set DB_PORT 5432
 

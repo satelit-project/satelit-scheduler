@@ -1,158 +1,123 @@
-use futures::future::*;
-use tower_grpc::client;
-use tower_grpc::generic::client::GrpcService;
-use tower_grpc::Request;
-use uuid::Uuid;
-
-use std::marker::PhantomData;
+use tonic::transport::Channel;
+use tokio::task;
 
 use super::StateError;
-use crate::block::blocking;
 use crate::db::entity::{self, FailedImport, IndexFile};
 use crate::db::import::FailedImports;
 use crate::db::index::IndexFiles;
-use crate::db::QueryError;
+use crate::proto::import::import_service_client::ImportServiceClient;
+use crate::proto::import::{ImportIntent, ImportIntentResult};
+use crate::proto::uuid::Uuid;
 use crate::proto::data;
-use crate::proto::import::client::ImportService;
-use crate::proto::import::ImportIntent;
 
-#[derive(Debug)]
-pub struct ImportIndex<T, R> {
-    client: ImportService<T>,
+/// Ask import service to start importing new database index file.
+pub struct ImportIndex<F> {
+    /// RPC client for importing service.
+    client: ImportServiceClient<Channel>,
+
+    /// Database access layer for all index files.
     index_files: IndexFiles,
+
+    /// Database access layer for failed to import anime entries.
     failed_imports: FailedImports,
-    _request: PhantomData<R>,
+
+    /// Closure to make URL where index file can be downloaded.
+    make_url: F,
 }
 
-#[derive(Clone)]
-struct DbContext {
-    index_file: IndexFile,
-    index_files: IndexFiles,
-    failed_import: Option<FailedImport>,
-    failed_imports: FailedImports,
-}
+// MARK: impl ImportIndex
 
-impl<T, R> ImportIndex<T, R> {
-    pub fn new(
-        client: ImportService<T>,
-        index_files: IndexFiles,
-        failed_imports: FailedImports,
-    ) -> Self {
-        ImportIndex {
-            client,
-            index_files,
-            failed_imports,
-            _request: PhantomData,
-        }
-    }
-}
-
-impl<T, R> ImportIndex<T, R>
-where
-    T: GrpcService<R> + Send,
-    T::Future: Send,
-    T::ResponseBody: Send,
-    <<T as GrpcService<R>>::ResponseBody as tower_grpc::Body>::Data: Send,
-    R: Send,
-    client::unary::Once<ImportIntent>: client::Encodable<R>,
+impl<F> ImportIndex<F>
+where 
+    F: Fn(&IndexFile) -> String
 {
-    pub fn import(
-        self,
-        index_file: IndexFile,
-    ) -> impl Future<Item = Self, Error = StateError> + Send {
-        // TODO: don't want to refactor yet, waiting for async/await beta
+    /// Creates new service instance.
+    pub fn new(client: ImportServiceClient<Channel>, index_files: IndexFiles, failed_imports: FailedImports, make_url: F) -> Self {
+        ImportIndex { client, index_files, failed_imports, make_url }
+    }
 
-        let source = entity::Source::Anidb;
-        let ImportIndex {
-            client,
-            index_files,
-            failed_imports,
-            ..
-        } = self;
+    /// Starts import process.
+    ///
+    /// The method will wait until the import process finish and then update database
+    /// with import result.
+    pub async fn import(&mut self, index_file: IndexFile) -> Result<(), StateError> {
+        let failed_imports = self.failed_imports.clone();
+        let index_files = self.index_files.clone();
+        let source = index_file.source;
 
-        // retrieve ids to reimport
-        blocking(move || {
-            let failed_import = failed_imports.with_source(source)?;
-            let context = DbContext {
-                index_file,
-                index_files,
-                failed_import,
-                failed_imports,
-            };
-            Ok(context)
-        })
-        .from_err()
-        // wait until grpc client ready to send requests
-        .join(client.ready().from_err())
-        // send import intent (start index import)
-        .and_then(move |(context, mut client)| {
-            let source = <entity::Source as Into<data::Source>>::into(source) as i32;
-            let mut reimport_ids = vec![];
-            if let Some(ref failed_import) = context.failed_import {
-                reimport_ids.extend(failed_import.title_ids.iter())
+        let reimport = task::spawn_blocking(move || {
+            failed_imports.with_source(source)
+        }).await??;
+
+        let (new_index, old_index) = task::spawn_blocking(move || {
+            let old = index_files.latest_processed(&index_file);
+            (index_file, old)
+        }).await?;
+
+        let mut reimport_ids = Vec::<i32>::new();
+        if let Some(ref reimport) = reimport {
+            reimport_ids.extend(reimport.title_ids.iter());
+        }
+
+        let new_url = (self.make_url)(&new_index);
+        let old_url = old_index?.map(|i| (self.make_url)(&i));
+        let intent = ImportIntent {
+            id: Some(Uuid::new()),
+            source: map_source(source) as i32,
+            new_index_url: new_url,
+            old_index_url: old_url.unwrap_or_else(String::new),
+            reimport_ids,
+        };
+
+        let res = self.client.start_import(intent).await?.into_inner();
+        self.process_result(res, new_index, reimport).await
+    }
+
+    /// Updates database with import result.
+    ///
+    /// The method will update status of failed to import anime entries and
+    /// will mark just processed index file as imported.
+    async fn process_result(&self, res: ImportIntentResult, index: IndexFile, reimport: Option<FailedImport>) -> Result<(), StateError> {
+        let index_files = self.index_files.clone();
+        let failed_imports = self.failed_imports.clone();
+
+        task::spawn_blocking(move || {
+            if let Some(reimport) = reimport {
+                let res = failed_imports.mark_reimported(reimport);
+                match res {
+                    Err(e) => return Err(e),
+                    _ => (),
+                };
             }
 
-            let intent = ImportIntent {
-                id: Uuid::new_v4().to_string(),
-                source,
-                dump_url: context.index_file.url.clone(),
-                reimport_ids,
-            };
+            if !res.skipped_ids.is_empty() {
+                let res = failed_imports.create(&index, &res.skipped_ids);
+                match res {
+                    Err(e) => return Err(e),
+                    _ => (),
+                };
+            }
 
-            client
-                .start_import(Request::new(intent))
-                .from_err()
-                .join(Ok(context))
-                .and_then(move |data| Ok((client, data)))
-        })
-        // on response
-        .and_then(move |(client, (response, context))| {
-            let result = response.into_inner();
+            index_files.mark_processed(index)
+        }).await??;
 
-            // preparing to write data from response to DB
-            blocking(move || {
-                let DbContext {
-                    index_files,
-                    index_file,
-                    failed_imports,
-                    failed_import,
-                } = context;
-
-                // mark previously failed to import ids as reimported
-                if let Some(failed_import) = failed_import {
-                    failed_imports.mark_reimported(failed_import)?;
-                }
-
-                // remember any titles that failed to import
-                if !result.skipped_ids.is_empty() {
-                    failed_imports.create(&index_file, &result.skipped_ids)?;
-                }
-
-                // mark index file as imported
-                index_files.mark_processed(index_file)?;
-                Ok((index_files, failed_imports))
-            })
-            .from_err()
-            // recreate myself to keep client
-            .and_then(move |(index_files, failed_imports)| {
-                let me = Self::new(client, index_files, failed_imports);
-                Ok(me)
-            })
-        })
+        Ok(())
     }
 }
+
+/// Converts domain anime source entry to protobuf's one.
+fn map_source(s: entity::Source) -> data::Source {
+    match s {
+        entity::Source::Anidb => data::Source::Anidb,
+    }
+}
+
+// MARK: impl data::Source
 
 impl From<entity::Source> for data::Source {
     fn from(s: entity::Source) -> Self {
         match s {
             entity::Source::Anidb => data::Source::Anidb,
         }
-    }
-}
-
-impl From<QueryError> for tower_grpc::Status {
-    fn from(e: QueryError) -> Self {
-        use tower_grpc::{Code, Status};
-        Status::new(Code::Internal, e.to_string())
     }
 }

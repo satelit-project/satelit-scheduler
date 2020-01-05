@@ -2,13 +2,12 @@
 
 create table index_files
 (
-    id         serial                    not null,
-    source     int                       not null,
-    hash       text                      not null,
-    url        text                      not null,
-    pending    boolean     default true  not null,
-    created_at timestamptz default now() not null,
-    updated_at timestamptz default now() not null
+    id         uuid        default uuid_generate_v4() not null,
+    source     int                                    not null,
+    hash       text                                   not null,
+    pending    boolean     default true               not null,
+    created_at timestamptz default now()              not null,
+    updated_at timestamptz default now()              not null
 );
 
 create unique index index_files_hash_uindex
@@ -27,15 +26,15 @@ SELECT diesel_manage_updated_at('index_files');
 
 create table failed_imports
 (
-    id         serial                    not null,
-    index_id   int                       not null
+    id         uuid        default uuid_generate_v4() not null,
+    index_id   uuid                                   not null
         constraint failed_imports_index_files_id_fk
             references index_files
             on update cascade on delete cascade,
-    title_ids  int[]                     not null,
-    reimported bool        default false not null,
-    created_at timestamptz default now() not null,
-    updated_at timestamptz default now() not null
+    title_ids  int[]                                  not null,
+    reimported bool        default false              not null,
+    created_at timestamptz default now()              not null,
+    updated_at timestamptz default now()              not null
 );
 
 create unique index failed_imports_id_uindex

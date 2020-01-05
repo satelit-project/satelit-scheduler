@@ -4,7 +4,7 @@ max_connections = 16
 connection_timeout = 10
 
 [service.indexer]
-anidb_url = "http://127.0.0.1:8080"
+url = "http://127.0.0.1:8080"
 connection_timeout = 60 # 1 min
 request_timeout = 60    # 1 min
 
