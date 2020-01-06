@@ -17,3 +17,7 @@ request_timeout = 3600  # 1 hour
 url = "http://127.0.0.1:9050"
 connection_timeout = 60 # 1 min
 request_timeout = 3600  # 1 hour
+
+[index_url]
+latest = "{base}/latest/{source}"
+index_file = "{base}/index/{hash}"

@@ -1,7 +1,7 @@
 use tonic::transport::Channel;
 use tokio::task;
 
-use super::StateError;
+use super::{PlanError, IndexURLBuilder};
 use crate::db::entity::{self, FailedImport, IndexFile};
 use crate::db::import::FailedImports;
 use crate::db::index::IndexFiles;
@@ -11,36 +11,33 @@ use crate::proto::uuid::Uuid;
 use crate::proto::data;
 
 /// Ask import service to start importing new database index file.
-pub struct ImportIndex<F> {
+pub struct ImportIndex<'a> {
     /// RPC client for importing service.
     client: ImportServiceClient<Channel>,
 
     /// Database access layer for all index files.
-    index_files: IndexFiles,
+    index_files: &'a IndexFiles,
 
     /// Database access layer for failed to import anime entries.
-    failed_imports: FailedImports,
+    failed_imports: &'a FailedImports,
 
-    /// Closure to make URL where index file can be downloaded.
-    make_url: F,
+    /// URL builder for index file downloads.
+    url_builder: &'a IndexURLBuilder,
 }
 
 // MARK: impl ImportIndex
 
-impl<F> ImportIndex<F>
-where 
-    F: Fn(&IndexFile) -> String
-{
+impl<'a> ImportIndex<'a> {
     /// Creates new service instance.
-    pub fn new(client: ImportServiceClient<Channel>, index_files: IndexFiles, failed_imports: FailedImports, make_url: F) -> Self {
-        ImportIndex { client, index_files, failed_imports, make_url }
+    pub fn new(client: ImportServiceClient<Channel>, index_files: &'a IndexFiles, failed_imports: &'a FailedImports, url_builder: &'a IndexURLBuilder) -> Self {
+        ImportIndex { client, index_files, failed_imports, url_builder }
     }
 
     /// Starts import process.
     ///
     /// The method will wait until the import process finish and then update database
     /// with import result.
-    pub async fn import(&mut self, index_file: IndexFile) -> Result<(), StateError> {
+    pub async fn start_import(&mut self, index_file: IndexFile) -> Result<(), PlanError> {
         let failed_imports = self.failed_imports.clone();
         let index_files = self.index_files.clone();
         let source = index_file.source;
@@ -59,13 +56,13 @@ where
             reimport_ids.extend(reimport.title_ids.iter());
         }
 
-        let new_url = (self.make_url)(&new_index);
-        let old_url = old_index?.map(|i| (self.make_url)(&i));
+        let new_url = self.url_builder.index(&new_index)?;
+        let old_url = old_index?.map(|i| self.url_builder.index(&i));
         let intent = ImportIntent {
             id: Some(Uuid::new()),
             source: map_source(source) as i32,
             new_index_url: new_url,
-            old_index_url: old_url.unwrap_or_else(String::new),
+            old_index_url: old_url.unwrap_or_else(|| Ok(String::new()))?,
             reimport_ids,
         };
 
@@ -77,7 +74,7 @@ where
     ///
     /// The method will update status of failed to import anime entries and
     /// will mark just processed index file as imported.
-    async fn process_result(&self, res: ImportIntentResult, index: IndexFile, reimport: Option<FailedImport>) -> Result<(), StateError> {
+    async fn process_result(&self, res: ImportIntentResult, index: IndexFile, reimport: Option<FailedImport>) -> Result<(), PlanError> {
         let index_files = self.index_files.clone();
         let failed_imports = self.failed_imports.clone();
 

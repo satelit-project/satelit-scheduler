@@ -1,6 +1,6 @@
 use tonic::transport::Channel;
 
-use super::StateError;
+use super::PlanError;
 use crate::db::entity::Source;
 use crate::proto::uuid::Uuid;
 use crate::proto::scraping::ScrapeIntent;
@@ -43,7 +43,7 @@ impl ScrapeData {
     /// It's still safe to call the method again if `should_scrape()`
     /// returns `false`. The RPC call will be made but scraper service
     /// may return immediatelly.
-    pub async fn start_scraping(&mut self) -> Result<(), StateError> {
+    pub async fn start_scraping(&mut self) -> Result<(), PlanError> {
         let intent = ScrapeIntent {
             id: Some(Uuid::new()),
             source: self.source as i32,

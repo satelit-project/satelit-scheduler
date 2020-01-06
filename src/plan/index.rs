@@ -2,20 +2,20 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::task;
 
-use super::StateError;
+use super::{PlanError, IndexURLBuilder};
 use crate::db::entity::{IndexFile, Source};
 use crate::db::index::IndexFiles;
 
 /// Service that fetches latest anime index files.
 pub struct UpdateIndex<'a> {
     /// HTTP client.
-    client: Client,
+    client: &'a Client,
 
     /// DB access layer for anime index files.
-    store: IndexFiles,
+    store: &'a IndexFiles,
 
     /// URL to get info about latest index files.
-    index_url: &'a str,
+    url_builder: &'a IndexURLBuilder,
 }
 
 /// Represents lates anime index file.
@@ -41,11 +41,11 @@ enum NewIndexFileSource {
 // MARK: impl UpdateIndex
 
 impl<'a> UpdateIndex<'a> {
-    pub fn new(client: Client, store: IndexFiles, index_url: &'a str) -> Self {
+    pub fn new(client: &'a Client, store: &'a IndexFiles, url_builder: &'a IndexURLBuilder) -> Self {
         UpdateIndex {
             client,
             store,
-            index_url,
+            url_builder,
         }
     }
 
@@ -53,10 +53,10 @@ impl<'a> UpdateIndex<'a> {
     ///
     /// In case if there's new index file available it will be saved to DB with
     /// `pending == true` status. Otherwise, existing record from the DB will be returned.
-    pub async fn latest_index(&self) -> Result<IndexFile, StateError> {
+    pub async fn latest_index(&self) -> Result<IndexFile, PlanError> {
         let resp = self
             .client
-            .get(self.index_url)
+            .get(&self.url_builder.latest()?)
             .send()
             .await?
             .error_for_status()?;
