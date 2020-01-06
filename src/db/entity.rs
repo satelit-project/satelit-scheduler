@@ -3,8 +3,10 @@ mod convert;
 use chrono::{DateTime, Utc};
 use diesel::sql_types::Integer;
 
-use crate::db::schema::{failed_imports, index_files};
-use crate::proto::uuid::Uuid;
+use crate::{
+    db::schema::{failed_imports, index_files},
+    proto::uuid::Uuid,
+};
 
 /// Represents anime entry location in external database.
 #[repr(C)]
@@ -25,7 +27,7 @@ pub struct IndexFile {
     pub updated_at: DateTime<Utc>,
 }
 
-
+/// Represents list of failed anime imports for an index file.
 #[derive(Clone, Queryable, Identifiable)]
 pub struct FailedImport {
     pub id: Uuid,

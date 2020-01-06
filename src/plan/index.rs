@@ -2,9 +2,11 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::task;
 
-use super::{PlanError, IndexURLBuilder};
-use crate::db::entity::{IndexFile, Source};
-use crate::db::index::IndexFiles;
+use super::{IndexURLBuilder, PlanError};
+use crate::db::{
+    entity::{IndexFile, Source},
+    index::IndexFiles,
+};
 
 /// Service that fetches latest anime index files.
 pub struct UpdateIndex<'a> {
@@ -41,7 +43,11 @@ enum NewIndexFileSource {
 // MARK: impl UpdateIndex
 
 impl<'a> UpdateIndex<'a> {
-    pub fn new(client: &'a Client, store: &'a IndexFiles, url_builder: &'a IndexURLBuilder) -> Self {
+    pub fn new(
+        client: &'a Client,
+        store: &'a IndexFiles,
+        url_builder: &'a IndexURLBuilder,
+    ) -> Self {
         UpdateIndex {
             client,
             store,

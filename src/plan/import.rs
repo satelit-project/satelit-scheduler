@@ -1,14 +1,19 @@
-use tonic::transport::Channel;
 use tokio::task;
+use tonic::transport::Channel;
 
-use super::{PlanError, IndexURLBuilder};
-use crate::db::entity::{self, FailedImport, IndexFile};
-use crate::db::import::FailedImports;
-use crate::db::index::IndexFiles;
-use crate::proto::import::import_service_client::ImportServiceClient;
-use crate::proto::import::{ImportIntent, ImportIntentResult};
-use crate::proto::uuid::Uuid;
-use crate::proto::data;
+use super::{IndexURLBuilder, PlanError};
+use crate::{
+    db::{
+        entity::{self, FailedImport, IndexFile},
+        import::FailedImports,
+        index::IndexFiles,
+    },
+    proto::{
+        data,
+        import::{import_service_client::ImportServiceClient, ImportIntent, ImportIntentResult},
+        uuid::Uuid,
+    },
+};
 
 /// Ask import service to start importing new database index file.
 pub struct ImportIndex<'a> {
@@ -29,8 +34,18 @@ pub struct ImportIndex<'a> {
 
 impl<'a> ImportIndex<'a> {
     /// Creates new service instance.
-    pub fn new(client: ImportServiceClient<Channel>, index_files: &'a IndexFiles, failed_imports: &'a FailedImports, url_builder: &'a IndexURLBuilder) -> Self {
-        ImportIndex { client, index_files, failed_imports, url_builder }
+    pub fn new(
+        client: ImportServiceClient<Channel>,
+        index_files: &'a IndexFiles,
+        failed_imports: &'a FailedImports,
+        url_builder: &'a IndexURLBuilder,
+    ) -> Self {
+        ImportIndex {
+            client,
+            index_files,
+            failed_imports,
+            url_builder,
+        }
     }
 
     /// Starts import process.
@@ -42,14 +57,13 @@ impl<'a> ImportIndex<'a> {
         let index_files = self.index_files.clone();
         let source = index_file.source;
 
-        let reimport = task::spawn_blocking(move || {
-            failed_imports.with_source(source)
-        }).await??;
+        let reimport = task::spawn_blocking(move || failed_imports.with_source(source)).await??;
 
         let (new_index, old_index) = task::spawn_blocking(move || {
             let old = index_files.latest_processed(&index_file);
             (index_file, old)
-        }).await?;
+        })
+        .await?;
 
         let mut reimport_ids = Vec::<i32>::new();
         if let Some(ref reimport) = reimport {
@@ -74,7 +88,12 @@ impl<'a> ImportIndex<'a> {
     ///
     /// The method will update status of failed to import anime entries and
     /// will mark just processed index file as imported.
-    async fn process_result(&self, res: ImportIntentResult, index: IndexFile, reimport: Option<FailedImport>) -> Result<(), PlanError> {
+    async fn process_result(
+        &self,
+        res: ImportIntentResult,
+        index: IndexFile,
+        reimport: Option<FailedImport>,
+    ) -> Result<(), PlanError> {
         let index_files = self.index_files.clone();
         let failed_imports = self.failed_imports.clone();
 
@@ -96,7 +115,8 @@ impl<'a> ImportIndex<'a> {
             }
 
             index_files.mark_processed(index)
-        }).await??;
+        })
+        .await??;
 
         Ok(())
     }

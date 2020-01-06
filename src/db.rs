@@ -3,8 +3,7 @@ pub mod import;
 pub mod index;
 pub mod schema;
 
-pub use diesel::r2d2::PoolError;
-pub use diesel::result::Error as UnderlyingError;
+pub use diesel::{r2d2::PoolError, result::Error as UnderlyingError};
 
 use diesel::{r2d2, PgConnection};
 use lazy_static::lazy_static;

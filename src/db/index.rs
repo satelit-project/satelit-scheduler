@@ -1,7 +1,9 @@
 use diesel::prelude::*;
 
-use crate::db::entity::{IndexFile, Source};
-use crate::db::{ConnectionPool, QueryError};
+use crate::db::{
+    entity::{IndexFile, Source},
+    ConnectionPool, QueryError,
+};
 
 #[derive(Debug, Clone)]
 pub struct IndexFiles {

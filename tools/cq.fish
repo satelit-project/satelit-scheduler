@@ -23,7 +23,7 @@ function main
     case clippy
       clippy
     case fmt
-      fmt $argv[1..-1]
+      fmt $argv[2..-1]
     case -h --help
       usage
     case '*'

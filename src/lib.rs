@@ -2,9 +2,9 @@
 extern crate diesel;
 
 pub mod db;
+pub mod plan;
 pub mod proto;
 pub mod settings;
-pub mod plan;
 
 use futures::prelude::*;
 // use tokio::prelude::*;

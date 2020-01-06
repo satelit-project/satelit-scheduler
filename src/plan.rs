@@ -3,20 +3,24 @@ pub mod index;
 pub mod scrape;
 
 use reqwest::{Client, Error as HttpError};
-use tokio::task::JoinError;
-use tonic::Status;
-use tonic::transport::Error as TransportError;
 use serde::Serialize;
-use tinytemplate::error::Error as TemplateError;
-use tinytemplate::TinyTemplate;
+use tinytemplate::{error::Error as TemplateError, TinyTemplate};
+use tokio::task::JoinError;
+use tonic::{transport::Error as TransportError, Status};
 
-use crate::settings::{IndexURL, Service};
-use crate::proto::import::import_service_client::ImportServiceClient;
-use crate::proto::scraping::scraper_service_client::ScraperServiceClient;
-use crate::db::entity::{IndexFile, Source};
-use crate::db::import::FailedImports;
-use crate::db::index::IndexFiles;
-use crate::db::QueryError;
+use crate::{
+    db::{
+        entity::{IndexFile, Source},
+        import::FailedImports,
+        index::IndexFiles,
+        QueryError,
+    },
+    proto::{
+        import::import_service_client::ImportServiceClient,
+        scraping::scraper_service_client::ScraperServiceClient,
+    },
+    settings::{IndexURL, Service},
+};
 
 /// Errors that may happen during scraping plan execution.
 #[derive(Debug)]
@@ -71,8 +75,20 @@ pub struct IndexURLBuilder {
 
 impl ScrapePlan {
     /// Creates new scraping plan instance.
-    pub fn new(service_config: Service, url_builder: IndexURLBuilder, index_files: IndexFiles, failed_imports: FailedImports, http_client: Client) -> Self {
-        ScrapePlan { service_config, url_builder, index_files, failed_imports, http_client }
+    pub fn new(
+        service_config: Service,
+        url_builder: IndexURLBuilder,
+        index_files: IndexFiles,
+        failed_imports: FailedImports,
+        http_client: Client,
+    ) -> Self {
+        ScrapePlan {
+            service_config,
+            url_builder,
+            index_files,
+            failed_imports,
+            http_client,
+        }
     }
 
     /// Runs anime scraping.
@@ -94,10 +110,11 @@ impl ScrapePlan {
     ///
     /// # Return
     ///
-    /// Returns latest anime index that should be used for scraping or error in case if update failed. 
+    /// Returns latest anime index that should be used for scraping or error in case if update failed.
     /// If index's `pending` field is `true`, it should be imported by importer service first.
     async fn update_index(&self) -> Result<IndexFile, PlanError> {
-        let check = index::UpdateIndex::new(&self.http_client, &self.index_files, &self.url_builder);
+        let check =
+            index::UpdateIndex::new(&self.http_client, &self.index_files, &self.url_builder);
         check.latest_index().await
     }
 
@@ -109,7 +126,12 @@ impl ScrapePlan {
     async fn import_index(&self, index: IndexFile) -> Result<(), PlanError> {
         let url = self.service_config.import().url().to_string();
         let client = ImportServiceClient::connect(url).await?;
-        let mut import = import::ImportIndex::new(client, &self.index_files, &self.failed_imports, &self.url_builder);
+        let mut import = import::ImportIndex::new(
+            client,
+            &self.index_files,
+            &self.failed_imports,
+            &self.url_builder,
+        );
         import.start_import(index).await
     }
 
@@ -134,7 +156,11 @@ impl ScrapePlan {
 impl IndexURLBuilder {
     /// Returns new builder instance.
     pub fn new(base_url: String, templates: IndexURL, source: Source) -> Self {
-        IndexURLBuilder { base_url, templates, source }
+        IndexURLBuilder {
+            base_url,
+            templates,
+            source,
+        }
     }
 
     /// Returns index source for which the builder creates URLs.
@@ -145,22 +171,34 @@ impl IndexURLBuilder {
     /// Returns URL to get info about latest index file.
     pub fn latest(&self) -> Result<String, TemplateError> {
         #[derive(Serialize)]
-        struct Context<'a> { base: &'a str, source: &'a str }
+        struct Context<'a> {
+            base: &'a str,
+            source: &'a str,
+        }
 
-        let ctx = Context { base: &self.base_url, source: self.source_path() };
+        let ctx = Context {
+            base: &self.base_url,
+            source: self.source_path(),
+        };
         self.render(self.templates.latest(), &ctx)
     }
 
     /// Returns URL to download specific index file.
     pub fn index(&self, file: &IndexFile) -> Result<String, TemplateError> {
         #[derive(Serialize)]
-        struct Context<'a> { base: &'a str, hash: &'a str }
+        struct Context<'a> {
+            base: &'a str,
+            hash: &'a str,
+        }
 
-        let ctx = Context { base: &self.base_url, hash: &file.hash };
+        let ctx = Context {
+            base: &self.base_url,
+            hash: &file.hash,
+        };
         self.render(self.templates.index_file(), &ctx)
     }
 
-    /// Renders and returns URL template or an error in case if rendering failed. 
+    /// Renders and returns URL template or an error in case if rendering failed.
     fn render<C: Serialize>(&self, tmp: &str, ctx: &C) -> Result<String, TemplateError> {
         let mut tt = TinyTemplate::new();
         tt.add_template("url", tmp)?;
@@ -170,7 +208,7 @@ impl IndexURLBuilder {
     /// Returns URL path component for the builder's `source` field.
     fn source_path(&self) -> &'static str {
         match self.source {
-            Source::Anidb => "anidb"
+            Source::Anidb => "anidb",
         }
     }
 }
@@ -202,13 +240,13 @@ impl From<JoinError> for PlanError {
 }
 
 impl From<TransportError> for PlanError {
-    fn from(e: TransportError) -> Self { 
+    fn from(e: TransportError) -> Self {
         PlanError::TransportError(e)
     }
 }
 
 impl From<TemplateError> for PlanError {
-    fn from(e: TemplateError) -> Self { 
+    fn from(e: TemplateError) -> Self {
         PlanError::UnexpectedError(Box::new(e))
     }
 }

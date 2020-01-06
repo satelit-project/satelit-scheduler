@@ -1,10 +1,13 @@
 use tonic::transport::Channel;
 
 use super::PlanError;
-use crate::db::entity::Source;
-use crate::proto::uuid::Uuid;
-use crate::proto::scraping::ScrapeIntent;
-use crate::proto::scraping::scraper_service_client::ScraperServiceClient;
+use crate::{
+    db::entity::Source,
+    proto::{
+        scraping::{scraper_service_client::ScraperServiceClient, ScrapeIntent},
+        uuid::Uuid,
+    },
+};
 
 /// Asks scraping RPC service to start anime scraping.
 pub struct ScrapeData {
@@ -23,7 +26,11 @@ pub struct ScrapeData {
 impl ScrapeData {
     /// Creates new struct instance.
     pub fn new(client: ScraperServiceClient<Channel>, source: Source) -> Self {
-        ScrapeData { client, source, should_scrape: true }
+        ScrapeData {
+            client,
+            source,
+            should_scrape: true,
+        }
     }
 
     /// Returns `true` if there's data to scrape of `false` otherwise.

@@ -34,7 +34,7 @@ pub mod ext {
             }
 
             Ok(super::uuid::Uuid {
-                uuid: Vec::from(value)
+                uuid: Vec::from(value),
             })
         }
     }

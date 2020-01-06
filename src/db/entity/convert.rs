@@ -1,11 +1,12 @@
-use diesel::backend::Backend;
-use diesel::pg::Pg;
-use diesel::deserialize::{self, FromSql};
-use diesel::serialize::{self, Output, ToSql};
-use diesel::sql_types::{Integer, Uuid};
+use diesel::{
+    backend::Backend,
+    deserialize::{self, FromSql},
+    pg::Pg,
+    serialize::{self, Output, ToSql},
+    sql_types::{Integer, Uuid},
+};
 
-use std::io::Write;
-use std::convert::TryFrom;
+use std::{convert::TryFrom, io::Write};
 
 use super::Source;
 use crate::proto::uuid;
