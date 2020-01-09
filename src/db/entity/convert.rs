@@ -1,3 +1,5 @@
+use std::{convert::TryFrom, io::Write};
+
 use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},
@@ -5,8 +7,6 @@ use diesel::{
     serialize::{self, Output, ToSql},
     sql_types::{Integer, Uuid},
 };
-
-use std::{convert::TryFrom, io::Write};
 
 use super::Source;
 use crate::proto::uuid;

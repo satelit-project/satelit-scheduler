@@ -1,17 +1,7 @@
-use config::{Config, ConfigError, File};
-use lazy_static::lazy_static;
-use serde::Deserialize;
-
 use std::time::Duration;
 
-lazy_static! {
-    static ref SHARED_SETTINGS: Settings = { Settings::new().expect("failed to read settings") };
-}
-
-/// Returns reference to global settings instance
-pub fn shared() -> &'static Settings {
-    &SHARED_SETTINGS
-}
+use config::{Config, ConfigError, File};
+use serde::Deserialize;
 
 /// App settings used to configure it's state
 #[derive(Debug, Clone, Deserialize)]
@@ -151,6 +141,6 @@ mod tests {
     #[test]
     fn test_parsing() {
         // if this does not panic then everything is good
-        let _ = super::shared();
+        let _ = super::Settings::new().unwrap();
     }
 }
