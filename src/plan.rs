@@ -54,9 +54,6 @@ pub struct ScrapePlan {
 
     /// Database access layer to access failed to parse anime entries.
     failed_imports: FailedImports,
-
-    /// HTTP client to access remote HTTP services.
-    http_client: Client,
 }
 
 /// Builds URLs to access anime indexing service.
@@ -80,14 +77,12 @@ impl ScrapePlan {
         url_builder: IndexURLBuilder,
         index_files: IndexFiles,
         failed_imports: FailedImports,
-        http_client: Client,
     ) -> Self {
         ScrapePlan {
             service_config,
             url_builder,
             index_files,
             failed_imports,
-            http_client,
         }
     }
 
@@ -113,8 +108,8 @@ impl ScrapePlan {
     /// Returns latest anime index that should be used for scraping or error in case if update failed.
     /// If index's `pending` field is `true`, it should be imported by importer service first.
     async fn update_index(&self) -> Result<IndexFile, PlanError> {
-        let check =
-            index::UpdateIndex::new(&self.http_client, &self.index_files, &self.url_builder);
+        let client = Client::new();
+        let check = index::UpdateIndex::new(&client, &self.index_files, &self.url_builder);
         check.latest_index().await
     }
 

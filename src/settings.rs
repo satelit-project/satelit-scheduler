@@ -18,6 +18,7 @@ pub fn shared() -> &'static Settings {
 pub struct Settings {
     services: Service,
     db: Db,
+    index_url: IndexURL,
 }
 
 /// Database configuration
@@ -67,6 +68,10 @@ impl Settings {
 
     pub fn db(&self) -> &Db {
         &self.db
+    }
+
+    pub fn index_url(&self) -> &IndexURL {
+        &self.index_url
     }
 }
 
