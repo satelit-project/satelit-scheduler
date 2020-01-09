@@ -57,6 +57,7 @@ pub struct ScrapePlan {
 }
 
 /// Builds URLs to access anime indexing service.
+#[derive(Debug, Clone)]
 pub struct IndexURLBuilder {
     /// Base URL of the service.
     base_url: String,
