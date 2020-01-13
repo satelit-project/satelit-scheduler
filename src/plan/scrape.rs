@@ -1,4 +1,5 @@
 use tonic::transport::Channel;
+use tracing::{debug, instrument};
 
 use super::PlanError;
 use crate::{
@@ -50,12 +51,14 @@ impl ScrapeData {
     /// It's still safe to call the method again if `should_scrape()`
     /// returns `false`. The RPC call will be made but scraper service
     /// may return immediatelly.
+    #[instrument(skip(self))]
     pub async fn start_scraping(&mut self) -> Result<(), PlanError> {
         let intent = ScrapeIntent {
             id: Some(Uuid::new()),
             source: self.source as i32,
         };
 
+        debug!("starting scraping with intent: {:?}", &intent);
         let res = self.client.start_scraping(intent).await?;
         self.should_scrape = res.get_ref().may_continue;
 

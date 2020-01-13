@@ -1,5 +1,6 @@
 use tokio::task;
 use tonic::transport::Channel;
+use tracing::{debug, instrument};
 
 use super::{IndexURLBuilder, PlanError};
 use crate::{
@@ -52,11 +53,11 @@ impl<'a> ImportIndex<'a> {
     ///
     /// The method will wait until the import process finish and then update database
     /// with import result.
+    #[instrument(skip(self))]
     pub async fn start_import(&mut self, index_file: IndexFile) -> Result<(), PlanError> {
         let failed_imports = self.failed_imports.clone();
         let index_files = self.index_files.clone();
         let source = index_file.source;
-
         let reimport = task::spawn_blocking(move || failed_imports.with_source(source)).await??;
 
         let (new_index, old_index) = task::spawn_blocking(move || {
@@ -80,6 +81,7 @@ impl<'a> ImportIndex<'a> {
             reimport_ids,
         };
 
+        debug!("starting import with indent: {:?}", &intent);
         let res = self.client.start_import(intent).await?.into_inner();
         self.process_result(res, new_index, reimport).await
     }
@@ -88,6 +90,7 @@ impl<'a> ImportIndex<'a> {
     ///
     /// The method will update status of failed to import anime entries and
     /// will mark just processed index file as imported.
+    #[instrument(skip(self))]
     async fn process_result(
         &self,
         res: ImportIntentResult,
@@ -99,6 +102,7 @@ impl<'a> ImportIndex<'a> {
 
         task::spawn_blocking(move || {
             if let Some(reimport) = reimport {
+                debug!("marking reimported items");
                 let res = failed_imports.mark_reimported(reimport);
                 match res {
                     Err(e) => return Err(e),
@@ -107,6 +111,7 @@ impl<'a> ImportIndex<'a> {
             }
 
             if !res.skipped_ids.is_empty() {
+                debug!("memorizing failed to import items");
                 let res = failed_imports.create(&index, &res.skipped_ids);
                 match res {
                     Err(e) => return Err(e),
@@ -114,6 +119,7 @@ impl<'a> ImportIndex<'a> {
                 };
             }
 
+            debug!("marking index file as imported");
             index_files.mark_processed(index)
         })
         .await??;

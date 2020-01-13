@@ -39,17 +39,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let scrape_runner = async move {
             info!("running scraping plan");
-            let plan = ScrapePlan::new(
-                services,
-                url_builder,
-                index_files,
-                failed_imports,
-            );
-
+            let plan = ScrapePlan::new(services, url_builder, index_files, failed_imports);
             let res = plan.run().await;
+
             match res {
                 Ok(more) => {
-                    info!("scrape succeeded");
+                    info!("scrape succeeded, has more data to srape: {}", more);
                     if !more {
                         info!("nothing to scrape anymore, waiting for 24h");
                         time::delay_for(Duration::from_secs(24 * 60 * 60)).await;
@@ -57,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Err(e) => {
                     error!("scraping plan failed: {:?}", e);
-                    time::delay_for(Duration::from_secs(60 * 60)).await;
+                    time::delay_for(Duration::from_secs(60)).await;
                 }
             }
         };

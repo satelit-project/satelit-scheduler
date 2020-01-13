@@ -7,6 +7,7 @@ use serde::Serialize;
 use tinytemplate::{error::Error as TemplateError, TinyTemplate};
 use tokio::task::JoinError;
 use tonic::{transport::Error as TransportError, Status};
+use tracing::{info, instrument};
 
 use crate::{
     db::{
@@ -42,6 +43,7 @@ pub enum PlanError {
 }
 
 /// Represents end-to-end scraping run.
+#[derive(Debug)]
 pub struct ScrapePlan {
     /// Configuration for external services.
     service_config: Service,
@@ -93,12 +95,17 @@ impl ScrapePlan {
     ///
     /// Returns `Ok(true)` if there's more data to scrape. In that case it's fine to run
     /// the plan again. Or error in case of any errors.
+    #[instrument(skip(self))]
     pub async fn run(&self) -> Result<bool, PlanError> {
+        info!("trying to update index");
         let index = self.update_index().await?;
+
         if index.pending {
+            info!("importing new index: {}", &index.id);
             self.import_index(index).await?;
         }
 
+        info!("starting scraping data");
         self.scrape_data().await
     }
 

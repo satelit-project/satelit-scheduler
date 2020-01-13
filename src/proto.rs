@@ -8,7 +8,10 @@ pub mod uuid;
 mod google;
 
 pub mod ext {
-    use std::convert::TryFrom;
+    use std::{
+        convert::TryFrom,
+        fmt::{self, Display, Formatter},
+    };
 
     impl super::uuid::Uuid {
         pub fn new() -> Self {
@@ -36,6 +39,37 @@ pub mod ext {
             Ok(super::uuid::Uuid {
                 uuid: Vec::from(value),
             })
+        }
+    }
+
+    impl Display for super::uuid::Uuid {
+        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+            const BYTES_IDX: [usize; 6] = [0, 4, 6, 8, 10, 16];
+            const HYPHEN_IDX: [usize; 4] = [8, 13, 18, 23];
+            const ALPHABET: [u8; 16] = [
+                b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'a', b'b', b'c', b'd',
+                b'e', b'f',
+            ];
+
+            let bytes = self.uuid.as_slice();
+            let mut buffer = [0; 36];
+            for group in 0..5 {
+                for i in BYTES_IDX[group]..BYTES_IDX[group + 1] {
+                    let byte = bytes[i];
+                    let iout = group + 2 * i;
+                    buffer[iout] = ALPHABET[(byte >> 4) as usize];
+                    buffer[iout + 1] = ALPHABET[(byte & 0b1111) as usize];
+                }
+
+                if group != 4 {
+                    buffer[HYPHEN_IDX[group]] = b'-';
+                }
+            }
+
+            match std::str::from_utf8_mut(&mut buffer) {
+                Ok(formatted) => write!(f, "{}", formatted),
+                Err(_) => write!(f, "{}", "non-uuid"),
+            }
         }
     }
 }

@@ -17,7 +17,7 @@ pub enum Source {
 }
 
 /// Represents an index file of all anime entries in external database.
-#[derive(Clone, Queryable, Identifiable)]
+#[derive(Debug, Clone, Queryable, Identifiable)]
 pub struct IndexFile {
     pub id: Uuid,
     pub source: Source,
@@ -28,7 +28,7 @@ pub struct IndexFile {
 }
 
 /// Represents list of failed anime imports for an index file.
-#[derive(Clone, Queryable, Identifiable)]
+#[derive(Debug, Clone, Queryable, Identifiable)]
 pub struct FailedImport {
     pub id: Uuid,
     pub index_id: Uuid,
