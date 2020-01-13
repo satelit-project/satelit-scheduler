@@ -2,7 +2,7 @@
 
 Schedules data import from external sources
 
-## TODO:
+## Requirements
 
-- [ ] Test 
-- [ ] Document
+- Rust stable and nightly
+- Docker
