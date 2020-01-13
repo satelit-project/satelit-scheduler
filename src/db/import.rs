@@ -1,7 +1,9 @@
 use diesel::prelude::*;
 
-use crate::db::entity::{FailedImport, IndexFile, Source};
-use crate::db::{ConnectionPool, QueryError};
+use crate::db::{
+    entity::{FailedImport, IndexFile, Source},
+    ConnectionPool, QueryError,
+};
 
 #[derive(Debug, Clone)]
 pub struct FailedImports {
@@ -18,15 +20,14 @@ impl FailedImports {
 
         let conn = self.pool.get()?;
         let value = diesel::insert_into(failed_imports)
-            .values((index_id.eq(index.id), title_ids.eq(ids)))
+            .values((index_id.eq(&index.id), title_ids.eq(ids)))
             .get_result(&conn)?;
 
         Ok(value)
     }
 
     pub fn with_source(&self, src: Source) -> Result<Option<FailedImport>, QueryError> {
-        use crate::db::schema::failed_imports;
-        use crate::db::schema::index_files;
+        use crate::db::schema::{failed_imports, index_files};
 
         let conn = self.pool.get()?;
         let value = failed_imports::table

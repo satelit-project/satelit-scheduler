@@ -3,21 +3,12 @@ pub mod import;
 pub mod index;
 pub mod schema;
 
-pub use diesel::r2d2::PoolError;
-pub use diesel::result::Error as UnderlyingError;
-
-use diesel::{r2d2, PgConnection};
-use lazy_static::lazy_static;
-
 use std::fmt;
 
-use crate::settings;
+use diesel::{r2d2, PgConnection};
+pub use diesel::{r2d2::PoolError, result::Error as UnderlyingError};
 
-lazy_static! {
-    static ref SHARED_POOL: ConnectionPool = {
-        new_connection_pool(settings::shared().db()).expect("failed to escablish db connection")
-    };
-}
+use crate::settings;
 
 /// PostgresQL connection from connection pool
 pub type PgPooledConnection = r2d2::PooledConnection<r2d2::ConnectionManager<PgConnection>>;
@@ -33,10 +24,6 @@ pub enum QueryError {
     PoolFailed(PoolError),
     /// Failed to perform db query
     QueryFailed(UnderlyingError),
-}
-
-pub fn connection_pool() -> ConnectionPool {
-    SHARED_POOL.clone()
 }
 
 pub fn new_connection_pool(settings: &settings::Db) -> Result<ConnectionPool, PoolError> {

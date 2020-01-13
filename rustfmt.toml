@@ -1,5 +1,5 @@
 unstable_features = true
-required_version = "1.4.3"
+required_version = "1.4.11"
 
 edition = "2018"
 version = "Two"
@@ -8,3 +8,5 @@ ignore = [
     "src/proto",
     "src/db/schema.rs",
 ]
+
+merge_imports = true

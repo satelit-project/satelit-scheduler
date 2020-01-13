@@ -1,7 +1,7 @@
 table! {
     failed_imports (id) {
-        id -> Int4,
-        index_id -> Int4,
+        id -> Uuid,
+        index_id -> Uuid,
         title_ids -> Array<Int4>,
         reimported -> Bool,
         created_at -> Timestamptz,
@@ -11,10 +11,9 @@ table! {
 
 table! {
     index_files (id) {
-        id -> Int4,
+        id -> Uuid,
         source -> Int4,
         hash -> Text,
-        url -> Text,
         pending -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
