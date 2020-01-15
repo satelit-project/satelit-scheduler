@@ -5,7 +5,6 @@ edition = "2018"
 version = "Two"
 
 ignore = [
-    "src/proto",
     "src/db/schema.rs",
 ]
 
