@@ -21,10 +21,9 @@ chrono = "0.4.10"
 futures = "0.3.1"
 tokio = { version = "0.2.6", features = ["full"] }
 
-tonic = "0.1.0-beta.1"
+tonic = "0.1.0"
 reqwest = { version = "0.10.0", default-features = false, features = ["json"] }
-prost = "0.5.0"
-bytes = "0.5.0"
+prost = "0.6.0"
 
 [patch.crates-io]
 prost = { git = "https://github.com/satelit-project/prost.git", branch = "satelit" }
