@@ -36,6 +36,8 @@ pub fn new_connection_pool(settings: &settings::Db) -> Result<ConnectionPool, Po
     Ok(ConnectionPool(pool))
 }
 
+// MARK: impl ConnectionPool
+
 impl ConnectionPool {
     pub fn get(&self) -> Result<PgPooledConnection, PoolError> {
         self.0.get()
@@ -47,6 +49,8 @@ impl std::fmt::Debug for ConnectionPool {
         write!(f, "pg connection pool")
     }
 }
+
+// MARK: impl QueryError
 
 impl From<PoolError> for QueryError {
     fn from(e: PoolError) -> Self {
