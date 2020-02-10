@@ -18,7 +18,7 @@ tinytemplate = "1.0.3"
 diesel = { version = "1.4.3", features = ["postgres", "r2d2", "chrono"] }
 chrono = "0.4.10"
 
-futures = "0.3.1"
+futures = "0.3.4"
 tokio = { version = "0.2.6", features = ["full"] }
 
 tonic = "0.1.0"
