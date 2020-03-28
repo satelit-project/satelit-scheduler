@@ -8,7 +8,6 @@ use serde::Deserialize;
 pub struct Settings {
     services: Service,
     db: Db,
-    index_url: IndexURL,
 }
 
 /// Database configuration
@@ -35,14 +34,6 @@ pub struct RemoteServiceConfig {
     request_timeout: Option<i32>,
 }
 
-/// URL templates for index files requests.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename(deserialize = "index_url"))]
-pub struct IndexURL {
-    latest: String,
-    index_file: String,
-}
-
 // MARK: impl Settings
 
 impl Settings {
@@ -58,10 +49,6 @@ impl Settings {
 
     pub fn db(&self) -> &Db {
         &self.db
-    }
-
-    pub fn index_url(&self) -> &IndexURL {
-        &self.index_url
     }
 }
 
@@ -122,25 +109,11 @@ impl RemoteServiceConfig {
     }
 }
 
-// MARK: impl IndexURL
-
-impl IndexURL {
-    /// Returns template for requesting latest index files info.
-    pub fn latest(&self) -> &str {
-        &self.latest
-    }
-
-    /// Returns template for downloading specific index file.
-    pub fn index_file(&self) -> &str {
-        &self.index_file
-    }
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
     fn test_parsing() {
         // if this does not panic then everything is good
-        let _ = super::Settings::new().unwrap();
+        super::Settings::new().unwrap();
     }
 }

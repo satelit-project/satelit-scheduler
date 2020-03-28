@@ -71,13 +71,13 @@ impl<'a> ImportIndex<'a> {
             reimport_ids.extend(reimport.title_ids.iter());
         }
 
-        let new_url = self.url_builder.index(&new_index)?;
+        let new_url = self.url_builder.index(&new_index);
         let old_url = old_index?.map(|i| self.url_builder.index(&i));
         let intent = ImportIntent {
             id: Some(Uuid::new()),
             source: map_source(source) as i32,
             new_index_url: new_url,
-            old_index_url: old_url.unwrap_or_else(|| Ok(String::new()))?,
+            old_index_url: old_url.unwrap_or_else(|| String::new()),
             reimport_ids,
         };
 

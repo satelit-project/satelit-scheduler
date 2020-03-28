@@ -22,7 +22,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Settings::new()?;
     let url_builder = IndexURLBuilder::new(
         config.services().indexer().url().to_string(),
-        config.index_url().clone(),
         Source::Anidb,
     );
 

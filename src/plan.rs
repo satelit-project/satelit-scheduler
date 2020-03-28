@@ -3,8 +3,6 @@ pub mod index;
 pub mod scrape;
 
 use reqwest::{Client, Error as HttpError};
-use serde::Serialize;
-use tinytemplate::{error::Error as TemplateError, TinyTemplate};
 use tokio::task::JoinError;
 use tonic::{transport::Error as TransportError, Status};
 use tracing::{info, instrument};
@@ -20,7 +18,7 @@ use crate::{
         import::import_service_client::ImportServiceClient,
         scraping::scraper_service_client::ScraperServiceClient,
     },
-    settings::{IndexURL, Service},
+    settings::Service,
 };
 
 /// Errors that may happen during scraping plan execution.
@@ -63,9 +61,6 @@ pub struct ScrapePlan {
 pub struct IndexURLBuilder {
     /// Base URL of the service.
     base_url: String,
-
-    /// URL templates for the service.
-    templates: IndexURL,
 
     /// Specifies for what kind of indexes build URLs for.
     source: Source,
@@ -158,10 +153,9 @@ impl ScrapePlan {
 
 impl IndexURLBuilder {
     /// Returns new builder instance.
-    pub fn new(base_url: String, templates: IndexURL, source: Source) -> Self {
+    pub fn new(base_url: String, source: Source) -> Self {
         IndexURLBuilder {
             base_url,
-            templates,
             source,
         }
     }
@@ -172,40 +166,13 @@ impl IndexURLBuilder {
     }
 
     /// Returns URL to get info about latest index file.
-    pub fn latest(&self) -> Result<String, TemplateError> {
-        #[derive(Serialize)]
-        struct Context<'a> {
-            base: &'a str,
-            source: &'a str,
-        }
-
-        let ctx = Context {
-            base: &self.base_url,
-            source: self.source_path(),
-        };
-        self.render(self.templates.latest(), &ctx)
+    pub fn latest(&self) -> String {
+        format!("{}/{}/latest", &self.base_url, self.source_path())
     }
 
     /// Returns URL to download specific index file.
-    pub fn index(&self, file: &IndexFile) -> Result<String, TemplateError> {
-        #[derive(Serialize)]
-        struct Context<'a> {
-            base: &'a str,
-            hash: &'a str,
-        }
-
-        let ctx = Context {
-            base: &self.base_url,
-            hash: &file.hash,
-        };
-        self.render(self.templates.index_file(), &ctx)
-    }
-
-    /// Renders and returns URL template or an error in case if rendering failed.
-    fn render<C: Serialize>(&self, tmp: &str, ctx: &C) -> Result<String, TemplateError> {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("url", tmp)?;
-        tt.render("url", ctx)
+    pub fn index(&self, file: &IndexFile) -> String {
+        format!("{}/{}/{}", &self.base_url, self.source_path(), &file.hash)
     }
 
     /// Returns URL path component for the builder's `source` field.
@@ -245,11 +212,5 @@ impl From<JoinError> for PlanError {
 impl From<TransportError> for PlanError {
     fn from(e: TransportError) -> Self {
         PlanError::TransportError(e)
-    }
-}
-
-impl From<TemplateError> for PlanError {
-    fn from(e: TemplateError) -> Self {
-        PlanError::UnexpectedError(Box::new(e))
     }
 }

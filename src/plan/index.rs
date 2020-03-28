@@ -62,7 +62,7 @@ impl<'a> UpdateIndex<'a> {
     /// `pending == true` status. Otherwise, existing record from the DB will be returned.
     #[instrument(skip(self))]
     pub async fn latest_index(&self) -> Result<IndexFile, PlanError> {
-        let url = self.url_builder.latest()?;
+        let url = self.url_builder.latest();
         debug!("requesting latest index from {}", &url);
 
         let resp = self.client.get(&url).send().await?.error_for_status()?;
