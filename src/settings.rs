@@ -1,7 +1,11 @@
+mod template;
+
+use config::{Config, ConfigError, File, FileFormat};
+use serde::Deserialize;
+
 use std::time::Duration;
 
-use config::{Config, ConfigError, File};
-use serde::Deserialize;
+use template::TemplateConfig;
 
 /// App settings used to configure it's state
 #[derive(Debug, Clone, Deserialize)]
@@ -38,8 +42,14 @@ pub struct RemoteServiceConfig {
 
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
+        let template = TemplateConfig::new("config.default.toml");
+        let config = File::from_str(
+            &template.render().map_err(ConfigError::Foreign)?,
+            FileFormat::Toml,
+        );
+
         let mut s = Config::new();
-        s.merge(File::with_name("config/default"))?;
+        s.merge(config)?;
         s.try_into()
     }
 
