@@ -128,7 +128,6 @@ impl ScrapePlan {
             client,
             &self.index_files,
             &self.failed_imports,
-            &self.url_builder,
         );
         import.start_import(index).await
     }
@@ -165,11 +164,6 @@ impl IndexURLBuilder {
     /// Returns URL to get info about latest index file.
     pub fn latest(&self) -> String {
         format!("{}/{}/latest", &self.base_url, self.source_path())
-    }
-
-    /// Returns URL to download specific index file.
-    pub fn index(&self, file: &IndexFile) -> String {
-        format!("{}/{}/{}", &self.base_url, self.source_path(), &file.hash)
     }
 
     /// Returns URL path component for the builder's `source` field.

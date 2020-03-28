@@ -21,7 +21,7 @@ pub enum Source {
 pub struct IndexFile {
     pub id: Uuid,
     pub source: Source,
-    pub hash: String,
+    pub file_path: String,
     pub pending: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

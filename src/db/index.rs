@@ -15,15 +15,15 @@ impl IndexFiles {
         IndexFiles { pool }
     }
 
-    pub fn queue(&self, new_hash: &str, src: Source) -> Result<IndexFile, QueryError> {
+    pub fn queue(&self, new_path: &str, src: Source) -> Result<IndexFile, QueryError> {
         use crate::db::schema::index_files::dsl::*;
 
         let conn = self.pool.get()?;
         let index = diesel::insert_into(index_files)
-            .values((hash.eq(new_hash), source.eq(src)))
-            .on_conflict(hash)
+            .values((file_path.eq(new_path), source.eq(src)))
+            .on_conflict(file_path)
             .do_update()
-            .set(hash.eq(new_hash))
+            .set(file_path.eq(new_path))
             .get_result(&conn)?;
 
         Ok(index)

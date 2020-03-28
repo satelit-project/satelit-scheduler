@@ -2,7 +2,7 @@ use tokio::task;
 use tonic::transport::Channel;
 use tracing::{debug, instrument};
 
-use super::{IndexURLBuilder, PlanError};
+use super::PlanError;
 use crate::{
     db::{
         entity::{self, FailedImport, IndexFile},
@@ -26,9 +26,6 @@ pub struct ImportIndex<'a> {
 
     /// Database access layer for failed to import anime entries.
     failed_imports: &'a FailedImports,
-
-    /// URL builder for index file downloads.
-    url_builder: &'a IndexURLBuilder,
 }
 
 // MARK: impl ImportIndex
@@ -39,13 +36,11 @@ impl<'a> ImportIndex<'a> {
         client: ImportServiceClient<Channel>,
         index_files: &'a IndexFiles,
         failed_imports: &'a FailedImports,
-        url_builder: &'a IndexURLBuilder,
     ) -> Self {
         ImportIndex {
             client,
             index_files,
             failed_imports,
-            url_builder,
         }
     }
 
@@ -71,12 +66,12 @@ impl<'a> ImportIndex<'a> {
             reimport_ids.extend(reimport.title_ids.iter());
         }
 
-        let new_url = self.url_builder.index(&new_index);
-        let old_url = old_index?.map(|i| self.url_builder.index(&i));
+        let new_url = &new_index.file_path;
+        let old_url = old_index?.map(|i| i.file_path);
         let intent = ImportIntent {
             id: Some(Uuid::new()),
             source: map_source(source) as i32,
-            new_index_url: new_url,
+            new_index_url: new_url.to_owned(),
             old_index_url: old_url.unwrap_or_else(String::new),
             reimport_ids,
         };

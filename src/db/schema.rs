@@ -13,7 +13,7 @@ table! {
     index_files (id) {
         id -> Uuid,
         source -> Int4,
-        hash -> Text,
+        file_path -> Text,
         pending -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,

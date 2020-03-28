@@ -29,8 +29,8 @@ struct NewIndexFile {
     /// Index file identifier.
     id: String,
 
-    /// Hash of the index file.
-    hash: String,
+    /// Path to the file in an index storage.
+    file_path: String,
 
     /// Type of DB index file relates to.
     source: i32,
@@ -67,9 +67,9 @@ impl<'a> UpdateIndex<'a> {
 
         let store = self.store.clone();
         let index = task::spawn_blocking(move || {
-            let hash = &new_index.hash;
+            let path = &new_index.file_path;
             let source = source;
-            store.queue(hash, source)
+            store.queue(path, source)
         })
         .await??;
         Ok(index)

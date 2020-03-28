@@ -4,14 +4,14 @@ create table index_files
 (
     id         uuid        default uuid_generate_v4() not null,
     source     int                                    not null,
-    hash       text                                   not null,
+    file_path  text                                   not null,
     pending    boolean     default true               not null,
     created_at timestamptz default now()              not null,
     updated_at timestamptz default now()              not null
 );
 
-create unique index index_files_hash_uindex
-    on index_files (hash);
+create unique index index_files_file_path_uindex
+    on index_files (file_path);
 
 create unique index index_files_id_uindex
     on index_files (id);
