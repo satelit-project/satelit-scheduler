@@ -42,7 +42,7 @@ pub struct RemoteServiceConfig {
 
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
-        let template = TemplateConfig::new("config.default.toml");
+        let template = TemplateConfig::new("config/default.toml");
         let config = File::from_str(
             &template.render().map_err(ConfigError::Foreign)?,
             FileFormat::Toml,

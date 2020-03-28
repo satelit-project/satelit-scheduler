@@ -20,10 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("loading configuration");
     let config = Settings::new()?;
-    let url_builder = IndexURLBuilder::new(
-        config.services().indexer().url().to_string(),
-        Source::Anidb,
-    );
+    let url_builder =
+        IndexURLBuilder::new(config.services().indexer().url().to_string(), Source::Anidb);
 
     info!("connecting to database");
     let pool = db::new_connection_pool(config.db())?;

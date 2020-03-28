@@ -154,10 +154,7 @@ impl ScrapePlan {
 impl IndexURLBuilder {
     /// Returns new builder instance.
     pub fn new(base_url: String, source: Source) -> Self {
-        IndexURLBuilder {
-            base_url,
-            source,
-        }
+        IndexURLBuilder { base_url, source }
     }
 
     /// Returns index source for which the builder creates URLs.

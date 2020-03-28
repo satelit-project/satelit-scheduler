@@ -1,5 +1,5 @@
 unstable_features = true
-required_version = "1.4.11"
+required_version = "1.4.12"
 
 edition = "2018"
 version = "Two"

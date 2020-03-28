@@ -60,9 +60,7 @@ where
 
 impl Default for Env {
     fn default() -> Self {
-        Env {
-            db: Db::from_env(),
-        }
+        Env { db: Db::from_env() }
     }
 }
 
