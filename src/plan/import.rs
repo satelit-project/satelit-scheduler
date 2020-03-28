@@ -77,7 +77,7 @@ impl<'a> ImportIndex<'a> {
             id: Some(Uuid::new()),
             source: map_source(source) as i32,
             new_index_url: new_url,
-            old_index_url: old_url.unwrap_or_else(|| String::new()),
+            old_index_url: old_url.unwrap_or_else(String::new),
             reimport_ids,
         };
 
@@ -103,20 +103,16 @@ impl<'a> ImportIndex<'a> {
         task::spawn_blocking(move || {
             if let Some(reimport) = reimport {
                 debug!("marking reimported items");
-                let res = failed_imports.mark_reimported(reimport);
-                match res {
-                    Err(e) => return Err(e),
-                    _ => (),
-                };
+                if let Err(e) = failed_imports.mark_reimported(reimport) {
+                    return Err(e);
+                }
             }
 
             if !res.skipped_ids.is_empty() {
                 debug!("memorizing failed to import items");
-                let res = failed_imports.create(&index, &res.skipped_ids);
-                match res {
-                    Err(e) => return Err(e),
-                    _ => (),
-                };
+                if let Err(e) = failed_imports.create(&index, &res.skipped_ids) {
+                    return Err(e);
+                }
             }
 
             debug!("marking index file as imported");
