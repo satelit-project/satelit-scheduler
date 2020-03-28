@@ -26,7 +26,7 @@ pub struct ImportIntentResult {
     #[prost(sint32, repeated, tag = "2")]
     pub skipped_ids: ::std::vec::Vec<i32>,
 }
-#[doc = r" Generated server implementations."]
+#[doc = r" Generated client implementations."]
 pub mod import_service_client {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;

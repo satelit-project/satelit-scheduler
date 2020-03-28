@@ -81,7 +81,7 @@ impl<'a> ImportIndex<'a> {
             reimport_ids,
         };
 
-        debug!("starting import with indent: {:?}", &intent);
+        debug!("starting import with intent: {:?}", &intent);
         let res = self.client.start_import(intent).await?.into_inner();
         self.process_result(res, new_index, reimport).await
     }

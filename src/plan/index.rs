@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use tokio::task;
 use tracing::{debug, instrument};
 
+use std::convert::{TryFrom, TryInto};
+
 use super::{IndexURLBuilder, PlanError};
 use crate::db::{
     entity::{IndexFile, Source},
@@ -31,14 +33,7 @@ struct NewIndexFile {
     hash: String,
 
     /// Type of DB index file relates to.
-    source: NewIndexFileSource,
-}
-
-/// Represents type of DB an index file relates to.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum NewIndexFileSource {
-    Anidb,
+    source: i32,
 }
 
 // MARK: impl UpdateIndex
@@ -67,12 +62,13 @@ impl<'a> UpdateIndex<'a> {
 
         let resp = self.client.get(&url).send().await?.error_for_status()?;
         let new_index = resp.json::<NewIndexFile>().await?;
+        let source = new_index.source.try_into()?;
         debug!("received new index: {}", &new_index.id);
 
         let store = self.store.clone();
         let index = task::spawn_blocking(move || {
             let hash = &new_index.hash;
-            let source = new_index.source.into();
+            let source = source;
             store.queue(hash, source)
         })
         .await??;
@@ -80,12 +76,17 @@ impl<'a> UpdateIndex<'a> {
     }
 }
 
-// MARK: impl NewIndexFileSource
+// MARK: impl i32
 
-impl From<NewIndexFileSource> for Source {
-    fn from(s: NewIndexFileSource) -> Self {
-        match s {
-            NewIndexFileSource::Anidb => Source::Anidb,
+impl TryFrom<i32> for Source {
+    type Error = PlanError;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Source::Anidb),
+            _ => Err(PlanError::ServiceError(super::Status::internal(
+                "failed to convert index source",
+            ))),
         }
     }
 }

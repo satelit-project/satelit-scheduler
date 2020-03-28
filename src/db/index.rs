@@ -21,7 +21,9 @@ impl IndexFiles {
         let conn = self.pool.get()?;
         let index = diesel::insert_into(index_files)
             .values((hash.eq(new_hash), source.eq(src)))
-            .on_conflict_do_nothing()
+            .on_conflict(hash)
+            .do_update()
+            .set(hash.eq(new_hash))
             .get_result(&conn)?;
 
         Ok(index)

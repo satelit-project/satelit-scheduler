@@ -18,7 +18,7 @@ where
 {
     fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
         match i32::from_sql(bytes)? {
-            0 => Ok(Source::Anidb),
+            1 => Ok(Source::Anidb),
             x => Err(format!("Unrecognized Source case: {}", x).into()),
         }
     }

@@ -70,7 +70,7 @@ pub struct TaskFinish {
     #[prost(message, optional, tag = "1")]
     pub task_id: ::std::option::Option<super::uuid::Uuid>,
 }
-#[doc = r" Generated server implementations."]
+#[doc = r" Generated client implementations."]
 pub mod scraper_service_client {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;
@@ -132,7 +132,7 @@ pub mod scraper_service_client {
         }
     }
 }
-#[doc = r" Generated server implementations."]
+#[doc = r" Generated client implementations."]
 pub mod scraper_tasks_service_client {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;

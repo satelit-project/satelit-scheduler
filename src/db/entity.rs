@@ -13,7 +13,7 @@ use crate::{
 #[sql_type = "Integer"]
 #[derive(Debug, Clone, Copy, FromSqlRow, AsExpression)]
 pub enum Source {
-    Anidb = 0,
+    Anidb = 1,
 }
 
 /// Represents an index file of all anime entries in external database.
