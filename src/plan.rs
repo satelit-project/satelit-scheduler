@@ -6,6 +6,7 @@ use reqwest::{Client, Error as HttpError};
 use tokio::task::JoinError;
 use tonic::{transport::Error as TransportError, Status};
 use tracing::{info, instrument};
+use tracing_futures::Instrument;
 
 use crate::{
     db::{
@@ -93,15 +94,14 @@ impl ScrapePlan {
     #[instrument(skip(self))]
     pub async fn run(&self) -> Result<bool, PlanError> {
         info!("trying to update index");
-        let index = self.update_index().await?;
-
+        let index = self.update_index().in_current_span().await?;
         if index.pending {
             info!("importing new index: {}", &index.id);
-            self.import_index(index).await?;
+            self.import_index(index).in_current_span().await?;
         }
 
         info!("starting scraping data");
-        self.scrape_data().await
+        self.scrape_data().in_current_span().await
     }
 
     /// Updates anime index by synchronizing with remote indexing service.
@@ -113,7 +113,7 @@ impl ScrapePlan {
     async fn update_index(&self) -> Result<IndexFile, PlanError> {
         let client = Client::new();
         let check = index::UpdateIndex::new(&client, &self.index_files, &self.url_builder);
-        check.latest_index().await
+        check.latest_index().in_current_span().await
     }
 
     /// Asks importer service to import anime index.
@@ -124,12 +124,8 @@ impl ScrapePlan {
     async fn import_index(&self, index: IndexFile) -> Result<(), PlanError> {
         let url = self.service_config.import().url().to_string();
         let client = ImportServiceClient::connect(url).await?;
-        let mut import = import::ImportIndex::new(
-            client,
-            &self.index_files,
-            &self.failed_imports,
-        );
-        import.start_import(index).await
+        let mut import = import::ImportIndex::new(client, &self.index_files, &self.failed_imports);
+        import.start_import(index).in_current_span().await
     }
 
     /// Asks scraping service to start anime scraping.
@@ -143,7 +139,7 @@ impl ScrapePlan {
         let url = self.service_config.scraper().url().to_string();
         let client = ScraperServiceClient::connect(url).await?;
         let mut scrape = scrape::ScrapeData::new(client, self.url_builder.source());
-        scrape.start_scraping().await?;
+        scrape.start_scraping().in_current_span().await?;
         Ok(scrape.should_scrape())
     }
 }

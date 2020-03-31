@@ -1,6 +1,7 @@
 use tokio::task;
 use tonic::transport::Channel;
-use tracing::{debug, instrument};
+use tracing::{info, Span};
+use tracing_futures::Instrument;
 
 use super::PlanError;
 use crate::{
@@ -48,7 +49,6 @@ impl<'a> ImportIndex<'a> {
     ///
     /// The method will wait until the import process finish and then update database
     /// with import result.
-    #[instrument(skip(self))]
     pub async fn start_import(&mut self, index_file: IndexFile) -> Result<(), PlanError> {
         let failed_imports = self.failed_imports.clone();
         let index_files = self.index_files.clone();
@@ -63,6 +63,7 @@ impl<'a> ImportIndex<'a> {
 
         let mut reimport_ids = Vec::<i32>::new();
         if let Some(ref reimport) = reimport {
+            info!("will reimport ids: {:?}", &reimport.title_ids);
             reimport_ids.extend(reimport.title_ids.iter());
         }
 
@@ -76,16 +77,20 @@ impl<'a> ImportIndex<'a> {
             reimport_ids,
         };
 
-        debug!("starting import with intent: {:?}", &intent);
+        info!(
+            "starting import with intent: {}",
+            intent.id.as_ref().unwrap()
+        );
         let res = self.client.start_import(intent).await?.into_inner();
-        self.process_result(res, new_index, reimport).await
+        self.process_result(res, new_index, reimport)
+            .in_current_span()
+            .await
     }
 
     /// Updates database with import result.
     ///
     /// The method will update status of failed to import anime entries and
     /// will mark just processed index file as imported.
-    #[instrument(skip(self))]
     async fn process_result(
         &self,
         res: ImportIntentResult,
@@ -95,22 +100,21 @@ impl<'a> ImportIndex<'a> {
         let index_files = self.index_files.clone();
         let failed_imports = self.failed_imports.clone();
 
+        let span = Span::current();
         task::spawn_blocking(move || {
+            let _enter = span.enter();
+
             if let Some(reimport) = reimport {
-                debug!("marking reimported items");
-                if let Err(e) = failed_imports.mark_reimported(reimport) {
-                    return Err(e);
-                }
+                info!("marking reimported items: {:?}", &reimport.title_ids);
+                failed_imports.mark_reimported(reimport)?;
             }
 
             if !res.skipped_ids.is_empty() {
-                debug!("memorizing failed to import items");
-                if let Err(e) = failed_imports.create(&index, &res.skipped_ids) {
-                    return Err(e);
-                }
+                info!("memorizing failed to import items: {:?}", &res.skipped_ids);
+                failed_imports.create(&index, &res.skipped_ids)?;
             }
 
-            debug!("marking index file as imported");
+            info!("marking index file as imported: {}", &index.id);
             index_files.mark_processed(index)
         })
         .await??;

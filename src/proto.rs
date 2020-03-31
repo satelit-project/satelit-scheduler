@@ -5,13 +5,10 @@ pub mod import;
 pub mod scraping;
 pub mod uuid;
 
-mod google;
+// MARK: uuid::Uuid
 
 pub mod ext {
-    use std::{
-        convert::TryFrom,
-        fmt::{self, Display, Formatter},
-    };
+    use std::{convert::TryFrom, fmt};
 
     impl super::uuid::Uuid {
         pub fn new() -> Self {
@@ -42,33 +39,34 @@ pub mod ext {
         }
     }
 
-    impl Display for super::uuid::Uuid {
-        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-            const BYTES_IDX: [usize; 6] = [0, 4, 6, 8, 10, 16];
-            const HYPHEN_IDX: [usize; 4] = [8, 13, 18, 23];
-            const ALPHABET: [u8; 16] = [
+    impl fmt::Display for super::uuid::Uuid {
+        #[allow(clippy::needless_range_loop)]
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            const HEX: [u8; 16] = [
                 b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'a', b'b', b'c', b'd',
                 b'e', b'f',
             ];
+            const BYTE_POS: [usize; 6] = [0, 4, 6, 8, 10, 16];
+            const HYPHEN_POS: [usize; 4] = [8, 13, 18, 23];
 
+            let mut buf = [0u8; 36];
             let bytes = self.uuid.as_slice();
-            let mut buffer = [0; 36];
             for group in 0..5 {
-                for i in BYTES_IDX[group]..BYTES_IDX[group + 1] {
-                    let byte = bytes[i];
-                    let iout = group + 2 * i;
-                    buffer[iout] = ALPHABET[(byte >> 4) as usize];
-                    buffer[iout + 1] = ALPHABET[(byte & 0b1111) as usize];
+                for idx in BYTE_POS[group]..BYTE_POS[group + 1] {
+                    let b = bytes[idx];
+                    let out_idx = group + 2 * idx;
+                    buf[out_idx] = HEX[(b >> 4) as usize];
+                    buf[out_idx + 1] = HEX[(b & 0b1111) as usize];
                 }
 
                 if group != 4 {
-                    buffer[HYPHEN_IDX[group]] = b'-';
+                    buf[HYPHEN_POS[group]] = b'-';
                 }
             }
 
-            match std::str::from_utf8_mut(&mut buffer) {
-                Ok(formatted) => write!(f, "{}", formatted),
-                Err(_) => write!(f, "{}", "non-uuid"),
+            match std::str::from_utf8_mut(&mut buf) {
+                Ok(hex) => hex.fmt(f),
+                Err(_) => Err(fmt::Error),
             }
         }
     }

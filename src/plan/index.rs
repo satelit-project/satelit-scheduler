@@ -1,7 +1,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::task;
-use tracing::{debug, instrument};
+use tracing::{debug, info};
 
 use std::convert::{TryFrom, TryInto};
 
@@ -55,15 +55,14 @@ impl<'a> UpdateIndex<'a> {
     ///
     /// In case if there's new index file available it will be saved to DB with
     /// `pending == true` status. Otherwise, existing record from the DB will be returned.
-    #[instrument(skip(self))]
     pub async fn latest_index(&self) -> Result<IndexFile, PlanError> {
         let url = self.url_builder.latest();
-        debug!("requesting latest index from {}", &url);
+        info!("requesting latest index from {}", &url);
 
         let resp = self.client.get(&url).send().await?.error_for_status()?;
         let new_index = resp.json::<NewIndexFile>().await?;
         let source = new_index.source.try_into()?;
-        debug!("received new index: {}", &new_index.id);
+        info!("received new index: {}", &new_index.id);
 
         let store = self.store.clone();
         let index = task::spawn_blocking(move || {
@@ -72,6 +71,8 @@ impl<'a> UpdateIndex<'a> {
             store.queue(path, source)
         })
         .await??;
+
+        debug!(pending = index.pending);
         Ok(index)
     }
 }
