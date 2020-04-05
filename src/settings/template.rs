@@ -18,6 +18,9 @@ pub struct TemplateConfig<P> {
 pub struct Env {
     /// Database configuration.
     db: Option<Db>,
+
+    /// Service URLs configuration.
+    service_urls: Option<ServiceUrl>,
 }
 
 /// Represents database configuration.
@@ -25,6 +28,19 @@ pub struct Env {
 pub struct Db {
     /// Database URL.
     url: String,
+}
+
+/// Represents external services configuration.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ServiceUrl {
+    /// Anime indexer URL.
+    indexer: String,
+
+    /// Anime importer URL.
+    import: String,
+
+    /// Anime scraper URL.
+    scraper: String,
 }
 
 // MARK: impl ConfigFile
@@ -60,7 +76,7 @@ where
 
 impl Default for Env {
     fn default() -> Self {
-        Env { db: Db::from_env() }
+        Env { db: Db::from_env(), service_urls: ServiceUrl::from_env() }
     }
 }
 
@@ -70,5 +86,17 @@ impl Db {
     fn from_env() -> Option<Self> {
         let url = env::var("PG_DB_URL").ok()?;
         Some(Db { url })
+    }
+}
+
+// MARK: impl ServiceUrl
+
+impl ServiceUrl {
+    fn from_env() -> Option<Self> {
+        let indexer = env::var("ST_INDEXER_URL").ok()?;
+        let import = env::var("ST_IMPORT_URL").ok()?;
+        let scraper = env::var("ST_SCRAPER_URL").ok()?;
+
+        Some(ServiceUrl{ indexer, import, scraper })
     }
 }

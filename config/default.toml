@@ -10,16 +10,19 @@ max_connections = 16
 connection_timeout = 10
 
 [services.indexer]
-url = "http://127.0.0.1:8080"
+# ST_INDEXER_URL
+url = {{ if service_urls }}"{ service_urls.indexer }"{{ else }}"http://127.0.0.1:8080"{{ endif }}
 connection_timeout = 60 # 1 min
 request_timeout = 60    # 1 min
 
 [services.import]
-url = "http://127.0.0.1:9060"
+# ST_IMPORT_URL
+url = {{ if service_urls }}"{ service_urls.import }"{{ else }}"http://127.0.0.1:9060"{{ endif }}
 connection_timeout = 60 # 1 min
 request_timeout = 3600  # 1 hour
 
 [services.scraper]
-url = "http://127.0.0.1:9050"
+# ST_SCRAPER_URL
+url = {{ if service_urls }}"{ service_urls.scraper }"{{ else }}"http://127.0.0.1:9050"{{ endif }}
 connection_timeout = 60 # 1 min
 request_timeout = 3600  # 1 hour
