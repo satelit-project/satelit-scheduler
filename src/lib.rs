@@ -1,3 +1,4 @@
+extern crate openssl;  // fix linkage on musl
 #[macro_use]
 extern crate diesel;
 

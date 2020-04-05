@@ -1,3 +1,5 @@
+extern crate openssl;  // fix linkage on musl
+
 use std::time::Duration;
 
 use tokio::time;
