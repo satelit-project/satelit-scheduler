@@ -944,7 +944,7 @@ dependencies = [
  "tonic 0.1.1 (git+https://github.com/satelit-project/tonic.git?branch=satelit)",
  "tracing 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "tracing-futures 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "tracing-subscriber 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tracing-subscriber 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1423,7 +1423,7 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1798,7 +1798,7 @@ dependencies = [
 "checksum tracing-futures 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "58b0b7fd92dc7b71f29623cc6836dd7200f32161a2313dd78be233a8405694f6"
 "checksum tracing-log 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5e0f8c7178e13481ff6765bd169b33e8d554c5d2bbede5e32c356194be02b9b9"
 "checksum tracing-serde 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b6ccba2f8f16e0ed268fc765d9b7ff22e965e7185d32f8f1ec8294fe17d86e79"
-"checksum tracing-subscriber 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "dedebcf5813b02261d6bab3a12c6a8ae702580c0405a2e8ec16c3713caf14c20"
+"checksum tracing-subscriber 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "cfc50df245be6f0adf35c399cb16dea60e2c7d6cc83ff5dc22d727df06dd6f0c"
 "checksum try-lock 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e604eb7b43c06650e854be16a2a03155743d3752dd1c943f6829e26b7a36e382"
 "checksum unicase 2.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "50f37be617794602aabbeee0be4f259dc1778fabe05e2d67ee8f79326d5cb4f6"
 "checksum unicode-bidi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "49f2bd0c6468a8230e1db229cff8029217cf623c767ea5d60bfbd42729ea54d5"
